@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   CSS PRINT MEDIA QUERIES FOR POLICY AUDIT TOOL & CIVIC REPORTS
+   ========================================================================== */
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+@media print {
+  @page {
+    margin: 1.2cm 1.5cm;
+    size: A4 portrait;
+  }
+
+  /* Hide screen-only interactive chrome */
+  header,
+  nav,
+  aside,
+  footer:not(.print-footer),
+  button,
+  input,
+  select,
+  textarea,
+  .no-print,
+  #global-search-modal,
+  #civic-accessibility-modal,
+  #daily-civic-digest-btn,
+  .sticky,
+  .fixed:not(.print-fixed) {
+    display: none !important;
+  }
+
+  /* Reset layout constraints for clean page flow */
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    line-height: 1.45 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Make sure container expands to full printable width */
+  .max-w-7xl,
+  .max-w-6xl,
+  .max-w-5xl,
+  .max-w-4xl,
+  .max-w-3xl,
+  .container {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Display print-only elements */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Policy Audit Report Printable Card Styling */
+  .print-report-container {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* Prevent awkward page cuts inside audit criteria cards */
+  .print-avoid-break,
+  .rounded-xl,
+  .rounded-2xl,
+  table,
+  tr,
+  figure,
+  .audit-criterion-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Force background colors and crisp borders for print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure text contrast on printed paper */
+  .text-slate-500,
+  .text-slate-400,
+  .text-slate-600 {
+    color: #334155 !important;
+  }
+
+  .text-emerald-700,
+  .text-emerald-800 {
+    color: #065f46 !important;
+    font-weight: bold !important;
+  }
+
+  .text-rose-700,
+  .text-rose-800 {
+    color: #9f1239 !important;
+    font-weight: bold !important;
+  }
+
+  .text-amber-700,
+  .text-amber-800 {
+    color: #92400e !important;
+    font-weight: bold !important;
+  }
+
+  /* Crisp borders */
+  .border,
+  .border-slate-200,
+  .border-slate-300 {
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Clean headings */
+  h1, h2, h3, h4, h5, h6 {
+    color: #020617 !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Print Header & Footer */
+  .print-header {
+    border-bottom: 2pt solid #0f172a !important;
+    padding-bottom: 8pt !important;
+    margin-bottom: 14pt !important;
+  }
+
+  .print-footer {
+    border-top: 1pt solid #cbd5e1 !important;
+    padding-top: 8pt !important;
+    margin-top: 16pt !important;
+    font-size: 8pt !important;
+    color: #64748b !important;
+  }
+}
