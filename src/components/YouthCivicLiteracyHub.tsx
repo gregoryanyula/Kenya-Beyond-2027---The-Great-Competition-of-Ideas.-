@@ -307,9 +307,10 @@ export const YouthCivicLiteracyHub: React.FC = () => {
                   ? "bg-purple-600 text-white shadow-xs"
                   : "text-purple-300 hover:text-white"
               }`}
+              id="tab-citizen-voices-btn"
             >
               <Volume2 className="w-3.5 h-3.5" />
-              <span>Voice Reflections</span>
+              <span>Citizen Voices</span>
             </button>
           </div>
         </div>

@@ -12,36 +12,38 @@ export interface StatutoryCitationItem {
 }
 
 export function getPointStatutoryCitations(
-  pointIndexOrTitle: string | number,
+  pointIndexOrTitle: string | number = 1,
   domain: string = "Economic Growth & Productivity"
 ): StatutoryCitationItem {
   let idx = typeof pointIndexOrTitle === "number" ? pointIndexOrTitle : 1;
+  const safeTitle = typeof pointIndexOrTitle === "string" ? pointIndexOrTitle.toLowerCase() : "";
+  const safeDomain = (domain || "").toLowerCase();
   
-  if (typeof pointIndexOrTitle === "string") {
+  if (typeof pointIndexOrTitle === "string" && pointIndexOrTitle) {
     const match = pointIndexOrTitle.match(/^(\d+)/);
     if (match) {
       idx = parseInt(match[1], 10);
-    } else if (pointIndexOrTitle.toLowerCase().includes("problem")) idx = 1;
-    else if (pointIndexOrTitle.toLowerCase().includes("exact") || pointIndexOrTitle.toLowerCase().includes("propos")) idx = 2;
-    else if (pointIndexOrTitle.toLowerCase().includes("implement")) idx = 3;
-    else if (pointIndexOrTitle.toLowerCase().includes("cost") || pointIndexOrTitle.toLowerCase().includes("realism")) idx = 4;
-    else if (pointIndexOrTitle.toLowerCase().includes("revenue") || pointIndexOrTitle.toLowerCase().includes("financ") || pointIndexOrTitle.toLowerCase().includes("where will")) idx = 5;
-    else if (pointIndexOrTitle.toLowerCase().includes("institution")) idx = 6;
-    else if (pointIndexOrTitle.toLowerCase().includes("outcome") || pointIndexOrTitle.toLowerCase().includes("kpi")) idx = 7;
-    else if (pointIndexOrTitle.toLowerCase().includes("timeline") || pointIndexOrTitle.toLowerCase().includes("milestone")) idx = 8;
-    else if (pointIndexOrTitle.toLowerCase().includes("risk") || pointIndexOrTitle.toLowerCase().includes("bottleneck")) idx = 9;
-    else if (pointIndexOrTitle.toLowerCase().includes("evidence") || pointIndexOrTitle.toLowerCase().includes("precedent")) idx = 10;
-    else if (pointIndexOrTitle.toLowerCase().includes("group") || pointIndexOrTitle.toLowerCase().includes("count") || pointIndexOrTitle.toLowerCase().includes("youth")) idx = 11;
-    else if (pointIndexOrTitle.toLowerCase().includes("constitut") || pointIndexOrTitle.toLowerCase().includes("legal") || pointIndexOrTitle.toLowerCase().includes("201")) idx = 12;
-    else if (pointIndexOrTitle.toLowerCase().includes("2060") || pointIndexOrTitle.toLowerCase().includes("vision") || pointIndexOrTitle.toLowerCase().includes("long-term")) idx = 13;
+    } else if (safeTitle.includes("problem")) idx = 1;
+    else if (safeTitle.includes("exact") || safeTitle.includes("propos")) idx = 2;
+    else if (safeTitle.includes("implement")) idx = 3;
+    else if (safeTitle.includes("cost") || safeTitle.includes("realism")) idx = 4;
+    else if (safeTitle.includes("revenue") || safeTitle.includes("financ") || safeTitle.includes("where will")) idx = 5;
+    else if (safeTitle.includes("institution")) idx = 6;
+    else if (safeTitle.includes("outcome") || safeTitle.includes("kpi")) idx = 7;
+    else if (safeTitle.includes("timeline") || safeTitle.includes("milestone")) idx = 8;
+    else if (safeTitle.includes("risk") || safeTitle.includes("bottleneck")) idx = 9;
+    else if (safeTitle.includes("evidence") || safeTitle.includes("precedent")) idx = 10;
+    else if (safeTitle.includes("group") || safeTitle.includes("count") || safeTitle.includes("youth")) idx = 11;
+    else if (safeTitle.includes("constitut") || safeTitle.includes("legal") || safeTitle.includes("201")) idx = 12;
+    else if (safeTitle.includes("2060") || safeTitle.includes("vision") || safeTitle.includes("long-term")) idx = 13;
   }
 
   // Domain-specific customization
-  const isHealth = domain.toLowerCase().includes("health");
-  const isEducation = domain.toLowerCase().includes("education") || domain.toLowerCase().includes("cbc") || domain.toLowerCase().includes("tvet");
-  const isAgri = domain.toLowerCase().includes("agri") || domain.toLowerCase().includes("food");
-  const isTech = domain.toLowerCase().includes("tech") || domain.toLowerCase().includes("digital") || domain.toLowerCase().includes("youth");
-  const isHousing = domain.toLowerCase().includes("housing");
+  const isHealth = safeDomain.includes("health");
+  const isEducation = safeDomain.includes("education") || safeDomain.includes("cbc") || safeDomain.includes("tvet");
+  const isAgri = safeDomain.includes("agri") || safeDomain.includes("food");
+  const isTech = safeDomain.includes("tech") || safeDomain.includes("digital") || safeDomain.includes("youth");
+  const isHousing = safeDomain.includes("housing");
 
   switch (idx) {
     case 1:

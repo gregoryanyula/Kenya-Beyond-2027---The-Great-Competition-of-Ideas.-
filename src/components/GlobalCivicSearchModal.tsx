@@ -194,9 +194,9 @@ export const GlobalCivicSearchModal: React.FC<GlobalCivicSearchModalProps> = ({
       })
       .map((item) => {
         let score = 0;
-        const titleLower = item.title.toLowerCase();
-        const subLower = item.subtitle.toLowerCase();
-        const tagsString = item.tags.join(" ").toLowerCase();
+        const titleLower = (item.title || "").toLowerCase();
+        const subLower = (item.subtitle || "").toLowerCase();
+        const tagsString = (item.tags || []).join(" ").toLowerCase();
 
         // Exact match boost
         if (titleLower === cleanQuery) score += 100;

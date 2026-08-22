@@ -1,6 +1,132 @@
 @import "tailwindcss";
 
 /* ==========================================================================
+   GLOBAL DARK MODE & ACCESSIBILITY THEMING
+   ========================================================================== */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b1120;
+  color: #f1f5f9;
+}
+
+/* Dark mode surface elevations */
+html.dark .bg-white {
+  background-color: #0f172a;
+}
+
+html.dark .bg-slate-50 {
+  background-color: #1e293b;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #334155;
+}
+
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-50\/90 {
+  background-color: rgba(30, 41, 59, 0.85);
+}
+
+html.dark .text-slate-900 {
+  color: #f8fafc;
+}
+
+html.dark .text-slate-800 {
+  color: #f1f5f9;
+}
+
+html.dark .text-slate-700 {
+  color: #cbd5e1;
+}
+
+html.dark .text-slate-600 {
+  color: #94a3b8;
+}
+
+html.dark .text-slate-500 {
+  color: #64748b;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-100 {
+  border-color: #334155;
+}
+
+html.dark .border-slate-300 {
+  border-color: #475569;
+}
+
+/* Dark mode inputs and textareas */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+/* High Contrast Mode */
+html.high-contrast-mode {
+  filter: contrast(125%);
+}
+
+html.high-contrast-mode .text-slate-500,
+html.high-contrast-mode .text-slate-600 {
+  color: #1e293b !important;
+}
+
+html.high-contrast-mode.dark .text-slate-400,
+html.high-contrast-mode.dark .text-slate-500 {
+  color: #e2e8f0 !important;
+}
+
+html.high-contrast-mode button,
+html.high-contrast-mode a,
+html.high-contrast-mode input {
+  border-width: 2px !important;
+}
+
+/* Maximum Mono High Contrast */
+html.maximum-mono-mode {
+  filter: contrast(140%) grayscale(100%);
+}
+
+/* Screen Reader Friendly Mode styling */
+html.screen-reader-friendly-mode .sr-only-visible {
+  display: inline-block !important;
+}
+
+/* Enhanced Focus Rings for Keyboard Accessibility */
+html.enhanced-focus-rings *:focus-visible {
+  outline: 3px solid #10b981 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25) !important;
+}
+
+html.font-scale-large {
+  font-size: 110%;
+}
+
+html.font-scale-xlarge {
+  font-size: 120%;
+}
+
+html.reduce-motion * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* ==========================================================================
    CSS PRINT MEDIA QUERIES FOR POLICY AUDIT TOOL & CIVIC REPORTS
    ========================================================================== */
 

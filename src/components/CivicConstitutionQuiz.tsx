@@ -12,10 +12,15 @@ import {
   ShieldCheck, 
   ExternalLink,
   ChevronRight,
-  Bookmark
+  Bookmark,
+  Volume2,
+  VolumeX,
+  Flame,
+  Filter
 } from "lucide-react";
 import { CONSTITUTION_QUIZ_QUESTIONS, ConstitutionQuizQuestion } from "../data/civicConstitutionQuizData";
 import { useCivicWatchlist } from "../context/CivicWatchlistContext";
+import { useCivicAccessibility } from "../context/CivicAccessibilityContext";
 
 interface CivicConstitutionQuizProps {
   onSelectPolicyForAudit?: (policyTopic: string, domain: string) => void;
@@ -23,20 +28,40 @@ interface CivicConstitutionQuizProps {
 
 export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ onSelectPolicyForAudit }) => {
   const { addToWatchlist } = useCivicWatchlist();
+  const { speakText, stopSpeaking, isSpeaking } = useCivicAccessibility();
+  
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [isAnswerRevealed, setIsAnswerRevealed] = useState<boolean>(false);
   const [quizFinished, setQuizFinished] = useState<boolean>(false);
+  const [streakCount, setStreakCount] = useState<number>(0);
+  const [bestStreak, setBestStreak] = useState<number>(0);
 
-  const currentQuestion: ConstitutionQuizQuestion = CONSTITUTION_QUIZ_QUESTIONS[currentIdx];
+  // Filter questions by category if selected
+  const filteredQuestions = selectedCategory === "all" 
+    ? CONSTITUTION_QUIZ_QUESTIONS 
+    : CONSTITUTION_QUIZ_QUESTIONS.filter(q => q.category === selectedCategory);
+
+  const currentQuestion: ConstitutionQuizQuestion = filteredQuestions[currentIdx] || filteredQuestions[0] || CONSTITUTION_QUIZ_QUESTIONS[0];
 
   const handleSelectOption = (optionId: string) => {
     if (isAnswerRevealed) return;
+    
     setSelectedAnswers((prev) => ({
       ...prev,
       [currentQuestion.id]: optionId
     }));
     setIsAnswerRevealed(true);
+
+    const chosenOpt = currentQuestion.options.find(o => o.id === optionId);
+    if (chosenOpt?.isCorrect) {
+      const newStreak = streakCount + 1;
+      setStreakCount(newStreak);
+      if (newStreak > bestStreak) setBestStreak(newStreak);
+    } else {
+      setStreakCount(0);
+    }
 
     // Track achievement progress in localStorage
     try {
@@ -50,17 +75,16 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
 
   const handleNextQuestion = () => {
     setIsAnswerRevealed(false);
-    if (currentIdx < CONSTITUTION_QUIZ_QUESTIONS.length - 1) {
+    if (currentIdx < filteredQuestions.length - 1) {
       setCurrentIdx((prev) => prev + 1);
     } else {
       setQuizFinished(true);
-      // Award Constitutional Scholar achievement if score >= 80%
-      const totalCorrect = CONSTITUTION_QUIZ_QUESTIONS.filter((q) => {
+      const totalCorrect = filteredQuestions.filter((q) => {
         const sel = selectedAnswers[q.id];
         const opt = q.options.find((o) => o.id === sel);
         return opt?.isCorrect;
       }).length;
-      const scorePct = Math.round((totalCorrect / CONSTITUTION_QUIZ_QUESTIONS.length) * 100);
+      const scorePct = Math.round((totalCorrect / filteredQuestions.length) * 100);
 
       try {
         const achievements = JSON.parse(localStorage.getItem("kenya2027_civic_achievements") || "{}");
@@ -80,13 +104,32 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
     setIsAnswerRevealed(false);
     setCurrentIdx(0);
     setQuizFinished(false);
+    setStreakCount(0);
   };
 
-  // Calculate final category scores
+  const handleCategoryChange = (cat: string) => {
+    setSelectedCategory(cat);
+    setSelectedAnswers({});
+    setIsAnswerRevealed(false);
+    setCurrentIdx(0);
+    setQuizFinished(false);
+    setStreakCount(0);
+  };
+
+  const handleReadQuestionAloud = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    } else {
+      const textToRead = `${currentQuestion.articleCitation}. Question: ${currentQuestion.question}. Options: ${currentQuestion.options.map(o => `${o.id.toUpperCase()}: ${o.text}`).join(". ")}`;
+      speakText(textToRead);
+    }
+  };
+
+  // Calculate category scores
   const calculateCategoryScores = () => {
     const categories: Record<string, { total: number; correct: number; domain: string; topics: string[] }> = {};
 
-    CONSTITUTION_QUIZ_QUESTIONS.forEach((q) => {
+    filteredQuestions.forEach((q) => {
       if (!categories[q.category]) {
         categories[q.category] = {
           total: 0,
@@ -106,45 +149,85 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
     return categories;
   };
 
-  const totalCorrect = CONSTITUTION_QUIZ_QUESTIONS.filter((q) => {
+  const totalCorrect = filteredQuestions.filter((q) => {
     const sel = selectedAnswers[q.id];
     const opt = q.options.find((o) => o.id === sel);
     return opt?.isCorrect;
   }).length;
 
-  const scorePercentage = Math.round((totalCorrect / CONSTITUTION_QUIZ_QUESTIONS.length) * 100);
+  const scorePercentage = filteredQuestions.length > 0 ? Math.round((totalCorrect / filteredQuestions.length) * 100) : 0;
+
+  const allCategories = [
+    { id: "all", label: "All Topics (Comprehensive)" },
+    { id: "Public Finance (Art. 201)", label: "Public Finance (Art. 201)" },
+    { id: "Social & Economic Rights (Art. 43)", label: "Bill of Rights (Art. 43 & 53)" },
+    { id: "Devolution & Equitable Share (Ch. 11)", label: "Devolution (Ch. 11)" },
+    { id: "Leadership & Integrity (Ch. 6)", label: "Leadership (Ch. 6)" },
+    { id: "National Values & Accountability (Art. 10 & 232)", label: "National Values (Art. 10)" }
+  ];
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden p-6 sm:p-8 space-y-6" id="civic-constitution-quiz">
       {/* Header */}
       <div className="border-b border-slate-100 pb-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-slate-900 text-white mb-2">
               <Scale className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Interactive 2010 Constitution Scrutiny Test</span>
+              <span>Civic Literacy Quiz (Katiba 2010 Scrutiny Engine)</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Civic Constitution Quiz & Policy Alignment Bridge
+              Civic Literacy & Constitutional Scrutiny Quiz
             </h3>
             <p className="text-xs text-slate-600 mt-1 max-w-3xl leading-relaxed">
-              Test your knowledge of the 2010 Kenyan Constitution (Public Finance, Human Rights, Devolution, and Leadership). Your quiz results dynamically identify policies in the Audit Tool that align with your constitutional priorities.
+              Challenge yourself with real constitutional scenarios covering Article 201 (Public Debt & Taxes), Article 43 (Health & Education), and Chapter 6 (Integrity). Receive immediate feedback and statutory rationale on every option.
             </p>
           </div>
 
           {!quizFinished && (
-            <div className="flex items-center space-x-2 shrink-0">
-              <span className="text-xs font-mono text-slate-500">
-                Question {currentIdx + 1} of {CONSTITUTION_QUIZ_QUESTIONS.length}
-              </span>
-              <div className="w-24 bg-slate-100 rounded-full h-2">
-                <div 
-                  className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${((currentIdx + 1) / CONSTITUTION_QUIZ_QUESTIONS.length) * 100}%` }}
-                />
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Streak Badge */}
+              {streakCount > 1 && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 font-bold text-xs animate-bounce">
+                  <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  <span>{streakCount} Streak!</span>
+                </div>
+              )}
+
+              <div className="text-right">
+                <span className="text-xs font-mono font-bold text-slate-500 block">
+                  Question {currentIdx + 1} of {filteredQuestions.length}
+                </span>
+                <div className="w-28 bg-slate-100 rounded-full h-2 mt-1">
+                  <div 
+                    className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((currentIdx + 1) / filteredQuestions.length) * 100}%` }}
+                  />
+                </div>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-4 pt-3 border-t border-slate-100">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+            <Filter className="w-3 h-3" />
+            <span>Filter Category:</span>
+          </span>
+          {allCategories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => handleCategoryChange(cat.id)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                selectedCategory === cat.id
+                  ? "bg-slate-900 text-white shadow-2xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -153,12 +236,24 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
-                {currentQuestion.articleCitation}
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Category: {currentQuestion.category}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  {currentQuestion.articleCitation}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  {currentQuestion.category}
+                </span>
+              </div>
+
+              {/* TTS Read-Aloud Button */}
+              <button
+                onClick={handleReadQuestionAloud}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-bold flex items-center gap-1 transition-colors"
+                title={isSpeaking ? "Stop audio narration" : "Read question and options aloud"}
+              >
+                {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-rose-600" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-600" />}
+                <span className="text-[10px]">{isSpeaking ? "Stop Voice" : "Read Aloud"}</span>
+              </button>
             </div>
 
             <h4 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
@@ -175,7 +270,7 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
                   if (opt.isCorrect) {
                     btnStyle = "bg-emerald-50 border-emerald-500 text-emerald-950 font-bold shadow-xs";
                   } else if (isSelected && !opt.isCorrect) {
-                    btnStyle = "bg-rose-50 border-rose-400 text-rose-950 line-through opacity-80";
+                    btnStyle = "bg-rose-50 border-rose-400 text-rose-950 line-through opacity-85";
                   } else {
                     btnStyle = "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
                   }
@@ -200,9 +295,16 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
                     <div className="flex-1 space-y-1">
                       <span className="leading-relaxed block">{opt.text}</span>
                       {isAnswerRevealed && (opt.isCorrect || isSelected) && (
-                        <p className={`text-[11px] mt-1 pt-1 border-t ${opt.isCorrect ? "text-emerald-800 border-emerald-200" : "text-rose-800 border-rose-200"}`}>
-                          💡 {opt.explanation}
-                        </p>
+                        <div className={`text-[11px] mt-1.5 p-2 rounded-lg border leading-relaxed ${
+                          opt.isCorrect 
+                            ? "bg-emerald-100/70 text-emerald-900 border-emerald-300 font-medium" 
+                            : "bg-rose-100/70 text-rose-900 border-rose-300 font-medium"
+                        }`}>
+                          <strong className="block mb-0.5">
+                            {opt.isCorrect ? "✅ Constitutional Reality:" : "❌ Why this violates the Constitution / Law:"}
+                          </strong>
+                          {opt.explanation}
+                        </div>
                       )}
                     </div>
                   </button>
@@ -214,15 +316,16 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
           {/* Navigation Controls */}
           <div className="flex items-center justify-between pt-2">
             <span className="text-xs text-slate-500 italic">
-              {isAnswerRevealed ? "Review constitutional rationale above, then proceed." : "Select the most constitutionally sound answer."}
+              {isAnswerRevealed ? "Review constitutional rationale above, then click next." : "Click the most constitutionally sound option."}
             </span>
 
             {isAnswerRevealed && (
               <button
                 onClick={handleNextQuestion}
                 className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
+                id="quiz-next-question-btn"
               >
-                <span>{currentIdx === CONSTITUTION_QUIZ_QUESTIONS.length - 1 ? "See Final Score & Policy Bridge" : "Next Question"}</span>
+                <span>{currentIdx === filteredQuestions.length - 1 ? "See Final Scorecard & Policy Bridge" : "Next Question"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
@@ -236,21 +339,26 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
           <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="space-y-2 text-center sm:text-left">
               <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 inline-block">
-                Constitutional Scrutiny Certificate
+                Civic Scrutiny Mastery Certificate
               </span>
               <h4 className="text-2xl font-black text-white">
                 {scorePercentage >= 80 ? "🏆 Constitutional Scholar" : scorePercentage >= 60 ? "🎖️ Civic Policy Watcher" : "📚 Civic Explorer"}
               </h4>
               <p className="text-xs text-slate-300 max-w-md leading-relaxed">
-                You correctly answered {totalCorrect} out of {CONSTITUTION_QUIZ_QUESTIONS.length} constitutional challenges. Below is your domain mastery profile and targeted policies for 2027 manifesto auditing.
+                You correctly answered {totalCorrect} out of {filteredQuestions.length} constitutional challenges. Below is your domain mastery profile and targeted policies for 2027 manifesto auditing.
               </p>
             </div>
 
             <div className="text-center bg-slate-800/80 p-5 rounded-xl border border-slate-700 shrink-0 min-w-[140px]">
               <span className="text-3xl font-black text-emerald-400">{scorePercentage}%</span>
               <span className="text-[10px] block text-slate-400 uppercase font-mono mt-1">
-                {totalCorrect}/{CONSTITUTION_QUIZ_QUESTIONS.length} Correct
+                {totalCorrect}/{filteredQuestions.length} Correct
               </span>
+              {bestStreak > 1 && (
+                <span className="text-[9px] text-amber-400 font-bold block mt-1">
+                  🔥 Max Streak: {bestStreak}
+                </span>
+              )}
             </div>
           </div>
 
@@ -268,7 +376,7 @@ export const CivicConstitutionQuiz: React.FC<CivicConstitutionQuizProps> = ({ on
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(calculateCategoryScores()).map(([catName, data], idx) => {
-                const catScore = Math.round((data.correct / data.total) * 100);
+                const catScore = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
                 return (
                   <div key={idx} className="p-5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-4">
                     <div className="space-y-2">

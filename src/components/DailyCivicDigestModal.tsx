@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { DailyCivicDigest, DailyCivicDigestHighlight } from "../types";
 import { useCivicWatchlist } from "../context/CivicWatchlistContext";
+import { useLanguage } from "../context/LanguageContext";
 import { CivicAudioWaveformVisualizer } from "./CivicAudioWaveformVisualizer";
 
 interface DailyCivicDigestModalProps {
@@ -38,12 +39,13 @@ export const DailyCivicDigestModal: React.FC<DailyCivicDigestModalProps> = ({
   onSelectPolicyForAudit
 }) => {
   const { watchlist } = useCivicWatchlist();
+  const { language, setLanguage, t, translateDynamic, isTranslating } = useLanguage();
   const [digest, setDigest] = useState<DailyCivicDigest | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [language, setLanguage] = useState<"en" | "sw">("en");
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [audioProgress, setAudioProgress] = useState<number>(0);
+  const [isTranslatingGemini, setIsTranslatingGemini] = useState<boolean>(false);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,12 +83,26 @@ export const DailyCivicDigestModal: React.FC<DailyCivicDigestModalProps> = ({
     } else {
       stopAudio();
     }
-  }, [isOpen, watchlist.length]);
+  }, [isOpen, watchlist.length, language]);
 
   const handleLanguageToggle = (newLang: "en" | "sw") => {
     if (newLang === language) return;
     setLanguage(newLang);
-    fetchDigest(newLang);
+  };
+
+  // Real-time Dynamic translation of current digest via Gemini API
+  const handleTranslateCurrentWithGemini = async () => {
+    if (!digest) return;
+    setIsTranslatingGemini(true);
+    try {
+      const nextLang = language === "en" ? "sw" : "en";
+      setLanguage(nextLang);
+      await fetchDigest(nextLang);
+    } catch (e) {
+      console.error("Gemini dynamic translation error:", e);
+    } finally {
+      setIsTranslatingGemini(false);
+    }
   };
 
   const stopAudio = () => {
@@ -202,19 +218,21 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
             <div>
               <div className="flex items-center gap-2">
                 <h2 id="civic-digest-title" className="text-base sm:text-lg font-bold text-white tracking-tight">
-                  Daily Civic Intelligence Digest
+                  {language === "sw" ? "Dondoo za Kila Siku za Ukaguzi wa Sera" : "Daily Civic Intelligence Digest"}
                 </h2>
                 <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Gemini AI Powered
+                  {language === "sw" ? "Imewezeshwa na Gemini AI" : "Gemini AI Powered"}
                 </span>
               </div>
               <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>{digest?.digestDate || new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
+                <span>{digest?.digestDate || new Date().toLocaleDateString(language === "sw" ? "sw-KE" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
                 {watchlist.length > 0 && (
                   <span className="text-emerald-400 font-medium">
-                    • Tailored to {watchlist.length} saved topic{watchlist.length > 1 ? "s" : ""}
+                    • {language === "sw" 
+                        ? `Imebinafsishwa kwa mada ${watchlist.length} zilizohifadhiwa` 
+                        : `Tailored to ${watchlist.length} saved topic${watchlist.length > 1 ? "s" : ""}`}
                   </span>
                 )}
               </p>
@@ -229,16 +247,18 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                 className={`px-2 py-1 rounded text-xs font-bold transition-all ${
                   language === "en" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-400 hover:text-white"
                 }`}
+                title="Badilisha iwe Kiingereza / English"
               >
-                EN
+                🇬🇧 EN
               </button>
               <button
                 onClick={() => handleLanguageToggle("sw")}
                 className={`px-2 py-1 rounded text-xs font-bold transition-all ${
                   language === "sw" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-400 hover:text-white"
                 }`}
+                title="Badilisha iwe Kiswahili (Ibara ya 7)"
               >
-                SW
+                🇰🇪 SW
               </button>
             </div>
 
@@ -254,13 +274,19 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-6 flex-1 text-slate-800">
-          {isLoading ? (
+          {isLoading || isTranslatingGemini ? (
             <div className="py-16 text-center space-y-4">
               <div className="w-12 h-12 rounded-full border-3 border-emerald-500 border-t-transparent animate-spin mx-auto" />
               <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-800">Synthesizing Today's Civic Intelligence...</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {language === "sw" 
+                    ? "Inakusanya na Kutafsiri Dondoo za Sera Kupitia Gemini AI..." 
+                    : "Synthesizing Today's Civic Intelligence via Gemini AI..."}
+                </p>
                 <p className="text-xs text-slate-500">
-                  Cross-referencing your watched domains with official KNBS data, CBK debt bulletins, and Article 201 rules.
+                  {language === "sw"
+                    ? "Inalinganisha mada zako na takwimu za KNBS, taarifa za madeni za CBK, na kanuni za Ibara ya 201 ya Katiba."
+                    : "Cross-referencing your watched domains with official KNBS data, CBK debt bulletins, and Article 201 rules."}
                 </p>
               </div>
             </div>
@@ -269,16 +295,26 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
               {/* Executive Morning Brief Card */}
               <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200/90 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 font-mono">
-                    Morning Briefing
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 font-mono">
+                      {language === "sw" ? "Muhtasari wa Asubuhi" : "Morning Briefing"}
+                    </span>
+                    <button
+                      onClick={handleTranslateCurrentWithGemini}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 transition-colors border border-emerald-200"
+                      title="Translate or switch language dynamically with Gemini AI"
+                    >
+                      <Sparkles className="w-3 h-3 text-emerald-600" />
+                      <span>{language === "en" ? "Tafsiri kwa Kiswahili (Gemini)" : "Translate to English (Gemini)"}</span>
+                    </button>
+                  </div>
                   <button
                     onClick={() => fetchDigest(language)}
                     className="text-xs text-slate-500 hover:text-emerald-700 flex items-center gap-1 font-medium"
                     title="Refresh Digest"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Refresh</span>
+                    <span>{language === "sw" ? "Sasisha" : "Refresh"}</span>
                   </button>
                 </div>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">
@@ -298,13 +334,15 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>50-Second Morning Civic Audio Broadcast</span>
+                        <span>{language === "sw" ? "Matangazo ya Sauti ya Dakika 1 ya Uraia" : "50-Second Morning Civic Audio Broadcast"}</span>
                         <span className="text-[9px] px-1.5 py-0.2 rounded font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          {language === "sw" ? "Kiswahili" : "English Audio"}
+                          {language === "sw" ? "Sauti ya Kiswahili" : "English Audio"}
                         </span>
                       </h4>
                       <p className="text-[10px] text-slate-400">
-                        Listen to today's essential manifesto scrutinies on your morning commute
+                        {language === "sw" 
+                          ? "Sikiliza uchambuzi mkuu wa ilani za kisiasa ukiwa njiani au kazini" 
+                          : "Listen to today's essential manifesto scrutinies on your morning commute"}
                       </p>
                     </div>
                   </div>
@@ -320,12 +358,12 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                     {isPlayingAudio ? (
                       <>
                         <Pause className="w-3.5 h-3.5 fill-current" />
-                        <span>Pause</span>
+                        <span>{language === "sw" ? "Simamisha" : "Pause"}</span>
                       </>
                     ) : (
                       <>
                         <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                        <span>Play Broadcast</span>
+                        <span>{language === "sw" ? "Sikiliza Tangazo" : "Play Broadcast"}</span>
                       </>
                     )}
                   </button>
@@ -358,11 +396,11 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                   <div className="flex items-center space-x-2">
                     <Bookmark className="w-4 h-4 text-emerald-700" />
                     <h4 className="text-sm font-bold text-slate-900">
-                      Tailored Scrutiny Highlights ({digest.tailoredHighlights?.length || 0})
+                      {language === "sw" ? "Dondoo Maalum za Ukaguzi" : "Tailored Scrutiny Highlights"} ({digest.tailoredHighlights?.length || 0})
                     </h4>
                   </div>
                   <span className="text-xs text-slate-500">
-                    Cross-referenced with KNBS & CBK data
+                    {language === "sw" ? "Imelinganishwa na ripoti za KNBS & CBK" : "Cross-referenced with KNBS & CBK data"}
                   </span>
                 </div>
 
@@ -382,7 +420,7 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                           </span>
                         </div>
                         <span className="text-[11px] text-slate-500 font-mono">
-                          Source: {item.evidenceSource}
+                          {language === "sw" ? "Chanzo:" : "Source:"} {item.evidenceSource}
                         </span>
                       </div>
 
@@ -391,7 +429,7 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                           {item.title}
                         </h5>
                         <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                          <span className="font-semibold text-slate-800">Manifesto Pledge: </span>
+                          <span className="font-semibold text-slate-800">{language === "sw" ? "Ahadi ya Ilani: " : "Manifesto Pledge: "}</span>
                           {item.manifestoUpdate}
                         </p>
                       </div>
@@ -400,7 +438,7 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                       <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2">
                         <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                         <span className="text-[11px] leading-relaxed">
-                          <strong className="text-slate-900">Article 201 Fiscal Note: </strong>
+                          <strong className="text-slate-900">{language === "sw" ? "Ibara ya 201 (Usimamizi wa Fedha): " : "Article 201 Fiscal Note: "}</strong>
                           {item.article201Status}
                         </span>
                       </div>
@@ -409,7 +447,7 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                       <div className="p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-900 space-y-1">
                         <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[11px]">
                           <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Demanded Town Hall Question:</span>
+                          <span>{language === "sw" ? "Swali la Kuuliza Mgombea Kwenye Mkutano wa Hadhara:" : "Demanded Town Hall Question:"}</span>
                         </div>
                         <p className="italic text-[11px] text-emerald-950 font-medium">
                           "{item.citizenTownHallQuestion}"
@@ -424,9 +462,9 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                               onSelectPolicyForAudit(item.manifestoUpdate || item.title, item.domain);
                               onClose();
                             }}
-                            className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 hover:underline"
+                            className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 hover:underline cursor-pointer"
                           >
-                            <span>Run 13-Point Audit on This Claim</span>
+                            <span>{language === "sw" ? "Kagua Ahadi Hii kwa Vigezo 13" : "Run 13-Point Audit on This Claim"}</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -442,7 +480,7 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                   <div className="flex items-center gap-2">
                     <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
                     <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 font-mono">
-                      Constitutional Article 201 Public Finance Watch
+                      {language === "sw" ? "Uangalizi wa Fedha za Umma (Ibara ya 201 ya Katiba)" : "Constitutional Article 201 Public Finance Watch"}
                     </h4>
                   </div>
                   <h5 className="text-sm font-bold text-amber-950">
@@ -464,7 +502,7 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
                   <Award className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-bold uppercase font-mono tracking-wider text-slate-600">
-                      Today's Civic Scrutiny Tip
+                      {language === "sw" ? "Wosia wa Uraia wa Leo" : "Today's Civic Scrutiny Tip"}
                     </span>
                     <p className="text-xs text-slate-800 font-medium">
                       {digest.todaysCivicTip}
@@ -475,7 +513,9 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
             </>
           ) : (
             <div className="py-12 text-center text-slate-500 text-sm">
-              Unable to load daily digest. Please check your internet connection.
+              {language === "sw" 
+                ? "Haikuweza kupakia dondoo za siku. Tafadhali thibitisha muunganisho wako." 
+                : "Unable to load daily digest. Please check your internet connection."}
             </div>
           )}
         </div>
@@ -485,18 +525,18 @@ Audited on Kenya 2027: The Great Competition of Ideas. Usitupatie slogan, tupati
           <button
             onClick={handleCopyDigest}
             disabled={!digest}
-            className="px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+            className="px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
-            <span>{copied ? "Copied to Clipboard!" : "Share / Export Digest"}</span>
+            <span>{copied ? (language === "sw" ? "Imenakiliwa!" : "Copied to Clipboard!") : (language === "sw" ? "Shiriki / Hamisha Dondoo" : "Share / Export Digest")}</span>
           </button>
 
           <div className="flex items-center space-x-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors"
+              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
             >
-              Done Reading
+              {language === "sw" ? "Nimekamilisha Kusoma" : "Done Reading"}
             </button>
           </div>
         </div>

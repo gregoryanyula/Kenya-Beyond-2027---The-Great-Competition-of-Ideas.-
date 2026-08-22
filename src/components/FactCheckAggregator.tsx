@@ -177,9 +177,14 @@ export const FactCheckAggregator: React.FC<{ initialClaim?: string }> = ({ initi
     }
   };
 
+  const safeSelectedDomain = (selectedDomain || "").toLowerCase();
+
   const filteredChecks = selectedDomain === "All Domains" 
     ? activeFactChecks 
-    : activeFactChecks.filter(c => c.domain.toLowerCase().includes(selectedDomain.toLowerCase()) || selectedDomain.toLowerCase().includes(c.domain.toLowerCase()));
+    : activeFactChecks.filter(c => {
+        const cDomain = (c.domain || "").toLowerCase();
+        return safeSelectedDomain.length > 0 && (cDomain.includes(safeSelectedDomain) || safeSelectedDomain.includes(cDomain));
+      });
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden space-y-6 p-6 sm:p-8" id="fact-check-aggregator">

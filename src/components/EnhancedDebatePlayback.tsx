@@ -205,13 +205,17 @@ export const EnhancedDebatePlayback: React.FC<EnhancedDebatePlaybackProps> = ({
     return `${mins.toString().padStart(2, "0")}:${remainingSecs.toString().padStart(2, "0")}`;
   };
 
+  const safeSearch = (searchQuery || "").toLowerCase();
+  const safeFilterSpeaker = (filterSpeaker || "").toLowerCase();
+
   const filteredTranscript = DEBATE_SEGMENTS.filter((seg) => {
-    const matchesSpeaker = filterSpeaker === "all" || seg.speakerRole.toLowerCase().includes(filterSpeaker.toLowerCase());
+    const role = (seg.speakerRole || "").toLowerCase();
+    const matchesSpeaker = filterSpeaker === "all" || role.includes(safeFilterSpeaker);
     const matchesFactCheck = !filterFactCheckOnly || seg.hasFactCheck;
     const matchesSearch = 
-      seg.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      seg.speaker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (seg.factCheckData?.claimQuote || "").toLowerCase().includes(searchQuery.toLowerCase());
+      (seg.text || "").toLowerCase().includes(safeSearch) ||
+      (seg.speaker || "").toLowerCase().includes(safeSearch) ||
+      (seg.factCheckData?.claimQuote || "").toLowerCase().includes(safeSearch);
     return matchesSpeaker && matchesFactCheck && matchesSearch;
   });
 

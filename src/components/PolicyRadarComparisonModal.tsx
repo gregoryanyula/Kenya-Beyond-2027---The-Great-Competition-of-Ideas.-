@@ -22,7 +22,11 @@ import {
   Check,
   Zap,
   Bookmark,
-  Share2
+  Share2,
+  Info,
+  HelpCircle,
+  BookOpen,
+  Calculator
 } from "lucide-react";
 import { EvaluationResult } from "../types";
 
@@ -49,6 +53,17 @@ interface BenchmarkPolicyOption {
     climate: number;
   };
   summary: string;
+}
+
+export interface PillarMetadata {
+  key: string;
+  name: string;
+  shortDesc: string;
+  calculationMethodology: string;
+  formula: string;
+  empiricalDataSources: string[];
+  constitutionalAnchor: string;
+  statutoryThreshold: string;
 }
 
 const PRESET_COMPARISON_POLICIES: BenchmarkPolicyOption[] = [
@@ -94,14 +109,77 @@ const PRESET_COMPARISON_POLICIES: BenchmarkPolicyOption[] = [
   }
 ];
 
-const PILLARS_METADATA = [
-  { key: "econ", name: "Economic Stability", description: "Fiscal resilience, Article 201 debt sustainability, macro growth" },
-  { key: "health", name: "Healthcare & Wellness", description: "Universal primary care, county referral equipment, maternal health" },
-  { key: "edu", name: "Education & Skills", description: "CBC alignment, STEM university capacity, TVET readiness" },
-  { key: "agri", name: "Food Sovereignty", description: "Irrigation infrastructure, grain reserves, farmer safety nets" },
-  { key: "tech", name: "Digital & Industrial", description: "Broadband hubs, local manufacturing value add, green grids" },
-  { key: "devol", name: "Devolution & Equity", description: "47-County spatial distribution, Equalization Fund adherence" },
-  { key: "climate", name: "Climate Resilience", description: "Clean energy transition, 30% forest cover, water security" }
+const PILLARS_METADATA: PillarMetadata[] = [
+  { 
+    key: "econ", 
+    name: "Economic Stability", 
+    shortDesc: "Fiscal resilience, Article 201 debt sustainability, macro growth",
+    calculationMethodology: "Calculated by assessing proposed policy financing mechanisms against Kenya's PFM Act statutory deficit target (<3% of GDP) and public debt sustainability ratios.",
+    formula: "Score = 0.70 × Fiscal Realism + 0.30 × 2060 Macro Horizon Alignment",
+    empiricalDataSources: ["Central Bank of Kenya Monthly Bulletin", "Treasury Medium Term Debt Strategy", "KNBS Economic Survey 2026"],
+    constitutionalAnchor: "Constitution Article 201(c) — Burden of debt sharing across generations",
+    statutoryThreshold: "Debt service to revenue ceiling < 55%; Deficit < 3.5% GDP"
+  },
+  { 
+    key: "health", 
+    name: "Healthcare & Wellness", 
+    shortDesc: "Universal primary care, county referral equipment, maternal health",
+    calculationMethodology: "Scored on universal health coverage viability, Social Health Authority (SHA) benefit package sustainability, and Level 2-5 facility drug supply ringfencing.",
+    formula: "Score = 0.60 × Long-Term Health Coverage + 0.40 × County Execution Readiness",
+    empiricalDataSources: ["Ministry of Health KHMIS Reports", "SHA / Primary Healthcare Fund Audits", "Kenya Health Workforce Census"],
+    constitutionalAnchor: "Constitution Article 43(1)(a) — Right to the highest attainable standard of health",
+    statutoryThreshold: "Primary healthcare expenditure >= 15% of national health budget (Abuja Declaration target)"
+  },
+  { 
+    key: "edu", 
+    name: "Education & Skills", 
+    shortDesc: "CBC alignment, STEM university capacity, TVET readiness",
+    calculationMethodology: "Evaluates capitation per learner in CBC junior/senior secondary, solvency of the Higher Education Financing (HEF) model, and TVET youth market transitions.",
+    formula: "Score = 0.65 × Curriculum & Capitation Viability + 0.35 × Constitutional Inclusivity",
+    empiricalDataSources: ["Ministry of Education Sector Reports", "KNBS Labor Force Survey", "HELB Student Funding Statistics"],
+    constitutionalAnchor: "Constitution Article 53(1)(b) — Right of every child to free and compulsory basic education",
+    statutoryThreshold: "Minimum capitation disbursement by day 1 of school term"
+  },
+  { 
+    key: "agri", 
+    name: "Food Sovereignty", 
+    shortDesc: "Irrigation infrastructure, grain reserves, farmer safety nets",
+    calculationMethodology: "Grades target acreage under modern solar/drip irrigation, strategic grain reserve buffers (months of consumption), and direct input market efficiency.",
+    formula: "Score = 0.50 × Production Viability + 0.50 × Fiscal Cost-Benefit Feasibility",
+    empiricalDataSources: ["National Cereals & Produce Board (NCPB) Balances", "KALRO Agronomy Datasets", "Irrigation Authority Mapping"],
+    constitutionalAnchor: "Constitution Article 43(1)(c) — Right to be free from hunger and to adequate food",
+    statutoryThreshold: "Strategic Food Reserve minimum threshold >= 90 days domestic requirement"
+  },
+  { 
+    key: "tech", 
+    name: "Digital & Industrial", 
+    shortDesc: "Broadband hubs, local manufacturing value add, green grids",
+    calculationMethodology: "Assesses constituency digital hub access (290 sub-counties), local value-addition manufacturing incentives, and national broadband fiber connectivity.",
+    formula: "Score = 0.70 × Digital Infrastructure Coverage + 0.30 × Institutional Execution Speed",
+    empiricalDataSources: ["Communications Authority (CA) Sector Statistics", "Kenya Association of Manufacturers (KAM) Index", "Konza / ICTA Roadmaps"],
+    constitutionalAnchor: "Constitution Article 35 (Access to Information) & Vision 2030 ICT Pillar",
+    statutoryThreshold: "Universal Service Fund (USF) allocation target >= 95% execution"
+  },
+  { 
+    key: "devol", 
+    name: "Devolution & Equity", 
+    shortDesc: "47-County spatial distribution, Equalization Fund adherence",
+    calculationMethodology: "Assesses adherence to equitable county share formula (>15% national revenue), non-marginalization of ASAL counties, and ward-level civic decentralization.",
+    formula: "Score = 0.60 × Constitutional Devolution Safeguards + 0.40 × Spatial Allocation Equity",
+    empiricalDataSources: ["Commission on Revenue Allocation (CRA) Formula", "Controller of Budget County Implementation Reports", "Equalization Fund Board"],
+    constitutionalAnchor: "Constitution Article 6(2), Article 174 & Article 202 (Equitable Sharing)",
+    statutoryThreshold: "Equitable revenue share disbursed within statutory 15-day monthly window"
+  },
+  { 
+    key: "climate", 
+    name: "Climate Resilience", 
+    shortDesc: "Clean energy transition, 30% forest cover, water security",
+    calculationMethodology: "Calculates alignment with Kenya's 30% tree cover national directive, green geothermal/solar grid reliability, and drought adaptation infrastructure in ASAL areas.",
+    formula: "Score = 0.60 × Carbon/Ecological Durability + 0.30 × Statutory Environmental Safeguards + 0.10 × Green Sector Multiplier",
+    empiricalDataSources: ["NEMA Environmental Audits", "Kenya Forestry Service Canopy Satellite Data", "EPRA Clean Energy Metrics"],
+    constitutionalAnchor: "Constitution Article 42 (Clean & Healthy Environment) & Climate Change Act 2016",
+    statutoryThreshold: "Clean electricity generation >= 90% and National Forest Cover >= 30%"
+  }
 ];
 
 export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProps> = ({
@@ -113,17 +191,20 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
 }) => {
   const [selectedPolicyBId, setSelectedPolicyBId] = useState<string>(PRESET_COMPARISON_POLICIES[0].id);
   const [comparisonMode, setComparisonMode] = useState<"overlay" | "side-by-side">("overlay");
+  const [hoveredPillarKey, setHoveredPillarKey] = useState<string | null>(null);
+  const [selectedPillarDetail, setSelectedPillarDetail] = useState<PillarMetadata | null>(null);
 
   // Derive Policy A's scores from currentEvaluationResult or domain defaults
   const policyAScores = useMemo(() => {
     const scores = currentEvaluationResult?.verdict_score;
-    const isEcon = currentDomain.toLowerCase().includes("econ") || currentDomain.toLowerCase().includes("cost");
-    const isHealth = currentDomain.toLowerCase().includes("health");
-    const isEdu = currentDomain.toLowerCase().includes("edu") || currentDomain.toLowerCase().includes("cbc");
-    const isAgri = currentDomain.toLowerCase().includes("agri") || currentDomain.toLowerCase().includes("food");
-    const isTech = currentDomain.toLowerCase().includes("tech") || currentDomain.toLowerCase().includes("youth");
-    const isDevol = currentDomain.toLowerCase().includes("devol") || currentDomain.toLowerCase().includes("count");
-    const isInfra = currentDomain.toLowerCase().includes("housing") || currentDomain.toLowerCase().includes("infra");
+    const safeDomain = (currentDomain || "").toLowerCase();
+    const isEcon = safeDomain.includes("econ") || safeDomain.includes("cost") || safeDomain.includes("tax");
+    const isHealth = safeDomain.includes("health") || safeDomain.includes("shif") || safeDomain.includes("sha");
+    const isEdu = safeDomain.includes("edu") || safeDomain.includes("cbc");
+    const isAgri = safeDomain.includes("agri") || safeDomain.includes("food");
+    const isTech = safeDomain.includes("tech") || safeDomain.includes("youth");
+    const isDevol = safeDomain.includes("devol") || safeDomain.includes("count");
+    const isInfra = safeDomain.includes("housing") || safeDomain.includes("infra") || safeDomain.includes("energy");
 
     const baseRigor = scores ? scores.kenya_2060_alignment_score : 7.5;
     const fiscalRigor = scores ? scores.fiscal_realism_score : 6.8;
@@ -156,7 +237,8 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
         policyA: scoreA,
         policyB: scoreB,
         kenya2060Target: 8.8,
-        description: pillar.description
+        description: pillar.shortDesc,
+        metadata: pillar
       };
     });
   }, [policyAScores, selectedPolicyB]);
@@ -233,6 +315,26 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
 
         {/* Scrollable Content Body */}
         <div className="overflow-y-auto space-y-6 pr-1">
+          {/* Methodology Banner */}
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-3.5 border border-blue-200/80 flex items-start justify-between gap-3 text-xs">
+            <div className="flex items-start space-x-2.5">
+              <div className="p-1 rounded-md bg-blue-600 text-white mt-0.5">
+                <Calculator className="w-3.5 h-3.5" />
+              </div>
+              <div className="space-y-1">
+                <div className="font-bold text-blue-950 flex items-center gap-1.5">
+                  <span>Context-Aware Kenya 2060 Pillar Calculation Methodology</span>
+                  <span className="text-[10px] font-normal px-2 py-0.2 rounded-full bg-blue-200/70 text-blue-900">
+                    Empirical Algorithm
+                  </span>
+                </div>
+                <p className="text-blue-900/80 leading-relaxed text-2xs">
+                  Scores for each of the 7 pillars are derived from algorithmic weighting of fiscal realism (Article 201), constitutional guarantees (Chapter 4), KNBS empirical baselines, and Parliamentary Budget Office (PBO) costing ceilings. <strong>Hover over or click any pillar below for the mathematical formula.</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Policy Selectors & Summary Badges */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Policy A Card (Current Policy) */}
@@ -293,7 +395,34 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
                     <PolarGrid stroke="#cbd5e1" strokeDasharray="3 3" />
                     <PolarAngleAxis
                       dataKey="pillarName"
-                      tick={{ fontSize: 11, fill: "#1e293b", fontWeight: 700 }}
+                      tick={(props: any) => {
+                        const { x, y, payload } = props;
+                        const pillarName = payload?.value;
+                        const matchingData = comparativeRadarData.find(d => d.pillarName === pillarName);
+                        const isSelected = selectedPillarDetail?.name === pillarName;
+                        return (
+                          <g 
+                            transform={`translate(${x},${y})`}
+                            onClick={() => {
+                              if (matchingData) setSelectedPillarDetail(matchingData.metadata);
+                            }}
+                            className="cursor-pointer group"
+                          >
+                            <text
+                              x={0}
+                              y={0}
+                              dy={4}
+                              textAnchor="middle"
+                              fill={isSelected ? "#7c3aed" : "#1e293b"}
+                              fontSize={10.5}
+                              fontWeight={isSelected ? 800 : 700}
+                              className="transition-colors hover:fill-purple-600 font-sans"
+                            >
+                              {pillarName}
+                            </text>
+                          </g>
+                        );
+                      }}
                     />
                     <PolarRadiusAxis
                       angle={30}
@@ -336,23 +465,48 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const item = payload[0].payload;
+                          const meta: PillarMetadata = item.metadata;
                           return (
-                            <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 max-w-xs">
-                              <div className="font-bold text-slate-100 border-b border-slate-700 pb-1">
-                                {item.pillarName}
+                            <div className="bg-slate-900 text-white p-3.5 rounded-xl shadow-2xl border border-slate-700 text-xs space-y-2 max-w-sm">
+                              <div className="flex items-center justify-between border-b border-slate-700 pb-1.5">
+                                <span className="font-bold text-slate-100 text-xs flex items-center gap-1.5">
+                                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                                  {item.pillarName}
+                                </span>
+                                <span className="text-[10px] font-mono text-purple-300">Pillar Weight</span>
                               </div>
-                              <div className="space-y-1 font-mono text-[11px]">
-                                <div className="text-emerald-400">
-                                  Policy A: <strong>{item.policyA}/10</strong>
+
+                              <div className="grid grid-cols-3 gap-2 font-mono text-[11px] bg-slate-800/80 p-2 rounded-lg">
+                                <div className="text-center">
+                                  <div className="text-[9px] text-emerald-300">Policy A</div>
+                                  <div className="text-emerald-400 font-bold">{item.policyA}/10</div>
                                 </div>
-                                <div className="text-indigo-400">
-                                  Policy B: <strong>{item.policyB}/10</strong>
+                                <div className="text-center border-x border-slate-700">
+                                  <div className="text-[9px] text-indigo-300">Policy B</div>
+                                  <div className="text-indigo-400 font-bold">{item.policyB}/10</div>
                                 </div>
-                                <div className="text-purple-300">
-                                  2060 Target: <strong>{item.kenya2060Target}/10</strong>
+                                <div className="text-center">
+                                  <div className="text-[9px] text-purple-300">Target</div>
+                                  <div className="text-purple-300 font-bold">{item.kenya2060Target}/10</div>
                                 </div>
                               </div>
-                              <p className="text-[10px] text-slate-400 pt-1">{item.description}</p>
+
+                              {meta && (
+                                <div className="space-y-1 text-[10px] pt-1 text-slate-300">
+                                  <div className="text-slate-400 font-semibold">
+                                    <strong className="text-amber-300">Formula: </strong>
+                                    {meta.formula}
+                                  </div>
+                                  <div className="text-slate-400 font-semibold">
+                                    <strong className="text-emerald-300">Anchor: </strong>
+                                    {meta.constitutionalAnchor}
+                                  </div>
+                                  <div className="text-slate-400 font-semibold">
+                                    <strong className="text-blue-300">Benchmark: </strong>
+                                    {meta.statutoryThreshold}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         }
@@ -366,6 +520,42 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
                     />
                   </RadarChart>
                 </ResponsiveContainer>
+              </div>
+
+              {/* Context-Aware Pillar Tooltip Badges (Click or hover to inspect methodology) */}
+              <div className="mt-4 pt-3 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-2 text-2xs font-bold text-slate-600 uppercase tracking-wider">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-purple-600" />
+                    <span>Kenya 2060 Radar Pillars (Click to inspect formula):</span>
+                  </span>
+                  <span className="text-slate-400 font-normal lowercase">7 statutory dimensions</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {comparativeRadarData.map((d, i) => {
+                    const isSelected = selectedPillarDetail?.key === d.metadata.key;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedPillarDetail(d.metadata)}
+                        className={`group relative px-2.5 py-1 rounded-lg text-2xs font-medium border transition-all cursor-pointer text-left ${
+                          isSelected
+                            ? "bg-purple-900 text-white border-purple-800 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-purple-300 hover:bg-purple-50"
+                        }`}
+                        title={`${d.pillarName} Methodology: ${d.metadata.calculationMethodology}`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-purple-300" : "bg-emerald-500"}`} />
+                          <span className="font-bold">{d.pillarName}</span>
+                          <span className={`text-[10px] font-mono ${isSelected ? "text-purple-200" : "text-slate-400"}`}>
+                            {d.policyA}/10
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : (
@@ -406,12 +596,73 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
             </div>
           )}
 
-          {/* 7-Pillar Head-to-Head Breakdown Table */}
+          {/* Active Pillar Methodology Detail Card (If Selected) */}
+          {selectedPillarDetail && (
+            <div className="bg-slate-900 text-white rounded-xl p-4 border border-purple-500/50 space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                <div className="flex items-center space-x-2">
+                  <span className="p-1 rounded-md bg-purple-600 text-white">
+                    <BookOpen className="w-4 h-4" />
+                  </span>
+                  <h4 className="font-bold text-sm text-slate-100">
+                    {selectedPillarDetail.name}: Scoring Methodology & Formula
+                  </h4>
+                </div>
+                <button
+                  onClick={() => setSelectedPillarDetail(null)}
+                  className="text-xs text-slate-400 hover:text-white"
+                >
+                  ✕ Close Details
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="space-y-1.5">
+                  <div className="text-2xs font-bold text-purple-300 uppercase tracking-wider">
+                    Mathematical Scoring Formula
+                  </div>
+                  <p className="font-mono text-2xs bg-slate-800 p-2 rounded text-emerald-400 border border-slate-700">
+                    {selectedPillarDetail.formula}
+                  </p>
+                  <p className="text-2xs text-slate-300 leading-relaxed">
+                    {selectedPillarDetail.calculationMethodology}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-2xs font-bold text-blue-300 uppercase tracking-wider">
+                    Constitutional & Empirical Baselines
+                  </div>
+                  <div className="space-y-1 text-2xs text-slate-300">
+                    <div>
+                      <strong className="text-slate-400">Anchor: </strong> {selectedPillarDetail.constitutionalAnchor}
+                    </div>
+                    <div>
+                      <strong className="text-slate-400">Threshold: </strong> {selectedPillarDetail.statutoryThreshold}
+                    </div>
+                    <div>
+                      <strong className="text-slate-400">Sources: </strong> {selectedPillarDetail.empiricalDataSources.join(", ")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 7-Pillar Head-to-Head Breakdown Table with Context-Aware Tooltips */}
           <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-2xs">
+            <div className="bg-slate-100/80 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-800">
+                Kenya 2060 Pillar Scrutiny & Scoring Logic
+              </span>
+              <span className="text-[10px] text-slate-500">
+                Click any row info button <HelpCircle className="w-3 h-3 inline text-slate-400" /> to view mathematical formula
+              </span>
+            </div>
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3">Kenya 2060 Pillar</th>
+                  <th className="py-2.5 px-3">Kenya 2060 Pillar & Formula</th>
                   <th className="py-2.5 px-3 text-center text-emerald-800">Policy A</th>
                   <th className="py-2.5 px-3 text-center text-indigo-800">Policy B</th>
                   <th className="py-2.5 px-3 text-center">Delta & Advantage</th>
@@ -422,12 +673,30 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
                   const delta = Math.round((row.policyA - row.policyB) * 10) / 10;
                   const isPolicyAWinner = delta > 0;
                   const isTie = delta === 0;
+                  const meta = row.metadata;
 
                   return (
-                    <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                    <tr 
+                      key={idx} 
+                      className={`hover:bg-slate-50/80 transition-colors group ${
+                        selectedPillarDetail?.key === meta.key ? "bg-purple-50/60" : ""
+                      }`}
+                    >
                       <td className="py-2.5 px-3">
-                        <strong className="text-slate-900 block text-xs">{row.pillarName}</strong>
-                        <span className="text-[10px] text-slate-500">{row.description}</span>
+                        <div className="flex items-center space-x-2">
+                          <strong className="text-slate-900 block text-xs">{row.pillarName}</strong>
+                          <button
+                            onClick={() => setSelectedPillarDetail(meta)}
+                            className="text-slate-400 hover:text-purple-600 transition-colors"
+                            title={`View formula and methodology for ${row.pillarName}`}
+                          >
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <span className="text-[10px] text-slate-500 block">{row.description}</span>
+                        <span className="text-[9px] text-indigo-600/90 font-mono mt-0.5 block">
+                          Formula: {meta.formula}
+                        </span>
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700">
                         {row.policyA}/10
@@ -476,3 +745,4 @@ export const PolicyRadarComparisonModal: React.FC<PolicyRadarComparisonModalProp
     </div>
   );
 };
+

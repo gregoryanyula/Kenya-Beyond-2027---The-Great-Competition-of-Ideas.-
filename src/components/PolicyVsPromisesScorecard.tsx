@@ -34,13 +34,15 @@ export const PolicyVsPromisesScorecard: React.FC = () => {
 
   const sectors = ["All", ...Array.from(new Set(POLICY_VS_PROMISES_SCORECARD_DATA.map((i) => i.sector)))];
 
+  const safeSearch = (searchQuery || "").toLowerCase();
+
   const filteredScorecards = POLICY_VS_PROMISES_SCORECARD_DATA.filter((item) => {
     const matchesSector = selectedSector === "All" || item.sector === selectedSector;
     const matchesSearch = 
-      item.sector.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.statedPromise.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.historicalRecordOrEvidence.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.citizenVerdict.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.sector || "").toLowerCase().includes(safeSearch) ||
+      (item.statedPromise || "").toLowerCase().includes(safeSearch) ||
+      (item.historicalRecordOrEvidence || "").toLowerCase().includes(safeSearch) ||
+      (item.citizenVerdict || "").toLowerCase().includes(safeSearch);
     return matchesSector && matchesSearch;
   });
 

@@ -317,5 +317,81 @@ export const CONSTITUTION_QUIZ_QUESTIONS: ConstitutionQuizQuestion[] = [
         explanation: "Integrity, transparency, and accountability are explicit values in Article 10(2)(c)."
       }
     ]
+  },
+  {
+    id: "cq-9",
+    question: "Under Article 53(1)(b) and Article 43(1)(f), what is the constitutional guarantee regarding basic education in Kenya?",
+    articleCitation: "Article 53(1)(b) & 43(1)(f) - Free and Compulsory Basic Education",
+    category: "Social & Economic Rights (Art. 43)",
+    policyDomainAlignment: "Education & Human Capital Development",
+    recommendedAuditTopics: [
+      "CBC Transition & Junior School Teacher Capitation",
+      "University Funding Model (HEF/HELB) Means-Testing Reform",
+      "Free Secondary Capitation Ring-Fencing"
+    ],
+    options: [
+      {
+        id: "a",
+        text: "Basic education is a privilege only available to students who can afford private auxiliary tuition fees.",
+        isCorrect: false,
+        explanation: "The Constitution explicitly guarantees free and compulsory basic education to every child."
+      },
+      {
+        id: "b",
+        text: "Every child has the right to free and compulsory basic education, and every person has the right to education.",
+        isCorrect: true,
+        explanation: "Correct! Article 53(1)(b) mandates that basic education is both free and compulsory, requiring state funding and capitation."
+      },
+      {
+        id: "c",
+        text: "Schools may expel students whose parents are unable to pay arbitrary PTA building levies.",
+        isCorrect: false,
+        explanation: "The Basic Education Act and constitutional precedents protect children from denial of basic education due to poverty."
+      },
+      {
+        id: "d",
+        text: "Technical and Vocational Training (TVET) is prohibited from receiving any national exchequer funding.",
+        isCorrect: false,
+        explanation: "TVET is a national strategic priority funded under the national education budget."
+      }
+    ]
+  },
+  {
+    id: "cq-10",
+    question: "Under Article 213 and Article 214 of the Constitution, what is the legal status of government loan guarantees and public debt repayment?",
+    articleCitation: "Article 213 & 214 - Sovereign Debt & Loan Guarantees",
+    category: "Public Finance (Art. 201)",
+    policyDomainAlignment: "Public Debt & Fiscal Realism",
+    recommendedAuditTopics: [
+      "Consolidated Fund Service (CFS) Debt First-Charge Scrutiny",
+      "National Assembly Loan Guarantee Transparency Register",
+      "Independent Public Debt Management Office Auditing"
+    ],
+    options: [
+      {
+        id: "a",
+        text: "Public debt is a direct first charge on the Consolidated Fund and must be serviced before discretionary ministry expenditures.",
+        isCorrect: true,
+        explanation: "Correct! Article 214(1) makes public debt a first charge on the Consolidated Fund, which is why debt crises severely squeeze funds for healthcare, education, and development."
+      },
+      {
+        id: "b",
+        text: "The executive can issue sovereign debt guarantees to private businesses without Parliament's knowledge or approval.",
+        isCorrect: false,
+        explanation: "Article 213(2) mandates that Parliament must enact legislation prescribing terms and conditions under which the government may guarantee loans."
+      },
+      {
+        id: "c",
+        text: "County governments can borrow foreign loans directly from external commercial banks without National Treasury and Senate approval.",
+        isCorrect: false,
+        explanation: "Article 212 mandates that county governments may only borrow if the national government guarantees the loan and Parliament approves."
+      },
+      {
+        id: "d",
+        text: "Foreign loan contracts cannot be evaluated for value-for-money by the Auditor General.",
+        isCorrect: false,
+        explanation: "Article 229 mandates the Auditor General to audit all accounts of national and county governments and public entities."
+      }
+    ]
   }
 ];

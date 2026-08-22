@@ -14,8 +14,9 @@ export const CivicTerm: React.FC<CivicTermProps> = ({ term, children, inline = t
   const [isHovered, setIsHovered] = useState(false);
   const containerRef = useRef<HTMLSpanElement | null>(null);
 
+  const safeTerm = (term || "").toLowerCase();
   const matchedTerm: CivicGlossaryTerm | undefined = CIVIC_GLOSSARY_TERMS.find(
-    (t) => t.term.toLowerCase() === term.toLowerCase() || t.slug.toLowerCase() === term.toLowerCase()
+    (t) => (t.term || "").toLowerCase() === safeTerm || (t.slug || "").toLowerCase() === safeTerm
   );
 
   // Close on outside click

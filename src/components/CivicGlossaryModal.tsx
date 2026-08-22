@@ -40,14 +40,16 @@ export const CivicGlossaryModal: React.FC<CivicGlossaryModalProps> = ({
     "Trade & Industry"
   ];
 
+  const safeSearch = (searchQuery || "").toLowerCase();
+
   const filteredTerms = CIVIC_GLOSSARY_TERMS.filter((item) => {
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
     const matchesSearch =
-      item.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.shortDefinition.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.fullExplainer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.whyItMattersFor2027.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.relatedArticleOrLaw && item.relatedArticleOrLaw.toLowerCase().includes(searchQuery.toLowerCase()));
+      (item.term || "").toLowerCase().includes(safeSearch) ||
+      (item.shortDefinition || "").toLowerCase().includes(safeSearch) ||
+      (item.fullExplainer || "").toLowerCase().includes(safeSearch) ||
+      (item.whyItMattersFor2027 || "").toLowerCase().includes(safeSearch) ||
+      ((item.relatedArticleOrLaw || "").toLowerCase().includes(safeSearch));
     return matchesCategory && matchesSearch;
   });
 

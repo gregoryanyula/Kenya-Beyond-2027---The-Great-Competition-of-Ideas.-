@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Sparkles, 
   Send, 
@@ -43,7 +43,16 @@ import {
   StickyNote,
   FileCheck,
   Mic,
-  MicOff
+  MicOff,
+  Mail,
+  MessageSquareQuote,
+  Flag,
+  History,
+  Calendar,
+  User,
+  FileJson,
+  Bell,
+  X
 } from "lucide-react";
 import { EvaluationResult, ManifestoDistillationResult, WeightedCriteriaSettings } from "../types";
 import { ConstitutionalArticlesSidebar } from "./ConstitutionalArticlesSidebar";
@@ -61,10 +70,33 @@ import { KeyImpactHighlightsCard } from "./KeyImpactHighlightsCard";
 import { PolicyPublicSentimentTrendChart } from "./PolicyPublicSentimentTrendChart";
 import { PolicyKenya2060RadarChart } from "./PolicyKenya2060RadarChart";
 import { PolicyConfidenceScoreRing } from "./PolicyConfidenceScoreRing";
+import { PolicyConfidenceGaugeChart } from "./PolicyConfidenceGaugeChart";
+import { PolicyVoiceCommandListener } from "./PolicyVoiceCommandListener";
+import { PolicyLegislativeStageTracker, LegislativeStageInfo } from "./PolicyLegislativeStageTracker";
+import { PolicyQuickPoll } from "./PolicyQuickPoll";
+import { PolicyKenya2060ImpactScore } from "./PolicyKenya2060ImpactScore";
+import { PolicyLifecycleTimeline } from "./PolicyLifecycleTimeline";
 import { PolicyRadarComparisonModal } from "./PolicyRadarComparisonModal";
 import { PolicyBriefingNoteModal } from "./PolicyBriefingNoteModal";
 import { PolicyAuditTemplateModal, PolicyAuditTemplate } from "./PolicyAuditTemplateModal";
+import { PolicyEmailShareModal } from "./PolicyEmailShareModal";
+import { RecentAuditHistory, saveToAuditHistory, RecentAuditItem } from "./RecentAuditHistory";
+import { PrintFriendlyLegend } from "./PrintFriendlyLegend";
+import { PolicyAuditFeedbackModal } from "./PolicyAuditFeedbackModal";
+import { PolicyNotificationCenter, PolicyNotification } from "./PolicyNotificationCenter";
 import { getPointStatutoryCitations } from "../utils/statutoryCitations";
+import { FiscalImpactSimulator } from "./FiscalImpactSimulator";
+import { PolicyInfluenceNetworkGraph } from "./PolicyInfluenceNetworkGraph";
+import { CivicCaseStudyBundler } from "./CivicCaseStudyBundler";
+import { PolicyELI5Card } from "./PolicyELI5Card";
+
+export interface SearchHistoryQuery {
+  id: string;
+  query: string;
+  domain: string;
+  actor: string;
+  timestamp: number;
+}
 
 const SAMPLE_PROPOSALS = [
   {
@@ -173,8 +205,217 @@ export const PolicyAuditTool: React.FC = () => {
   });
   const [showWeightSliders, setShowWeightSliders] = useState(false);
 
-  // PDF Exporting State
+  // PDF Exporting State & Configurable Metadata
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isPdfConfigModalOpen, setIsPdfConfigModalOpen] = useState(false);
+  const [pdfReportTitle, setPdfReportTitle] = useState("");
+  const [pdfAuthorName, setPdfAuthorName] = useState("Civic Policy Analyst");
+  const [pdfAnalysisDate, setPdfAnalysisDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  });
+
+  // Search History State (stores user's previous 5 search queries in localStorage)
+  const [searchHistoryQueries, setSearchHistoryQueries] = useState<SearchHistoryQuery[]>(() => {
+    try {
+      const raw = localStorage.getItem("kenya2027_policy_search_history");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveSearchQuery = (queryText: string, domain: string, actor: string) => {
+    const trimmed = queryText.trim();
+    if (!trimmed) return;
+    try {
+      setSearchHistoryQueries((prev) => {
+        const filtered = prev.filter(
+          (item) => item.query.trim().toLowerCase() !== trimmed.toLowerCase()
+        );
+        const newItem: SearchHistoryQuery = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          query: trimmed,
+          domain,
+          actor,
+          timestamp: Date.now()
+        };
+        const updated = [newItem, ...filtered].slice(0, 5);
+        localStorage.setItem("kenya2027_policy_search_history", JSON.stringify(updated));
+        return updated;
+      });
+    } catch (e) {
+      console.warn("Error saving search history:", e);
+    }
+  };
+
+  const clearSearchQueries = () => {
+    setSearchHistoryQueries([]);
+    try {
+      localStorage.removeItem("kenya2027_policy_search_history");
+    } catch (e) {
+      console.warn("Error clearing search history:", e);
+    }
+  };
+
+  const handleSelectSearchHistory = (item: SearchHistoryQuery) => {
+    setInputText(item.query);
+    setSelectedDomain(item.domain);
+    setActorType(item.actor);
+    handleEvaluate(item.query);
+  };
+
+  // Notification Center State (Persistent in localStorage)
+  const [auditNotifications, setAuditNotifications] = useState<PolicyNotification[]>(() => {
+    try {
+      const raw = localStorage.getItem("kenya2027_audit_notifications");
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.warn("Failed reading audit notifications from localStorage:", e);
+    }
+    // Default initial notifications
+    return [
+      {
+        id: "notif_init_1",
+        policyTitle: "Youth Tech Entrepreneurship & Digital Sovereign Hubs",
+        stageName: "Public Participation (Article 118)",
+        stepNumber: 2,
+        domain: "Employment & Youth Opportunities",
+        citizenAction: "Submit public memoranda on digital taxation waivers to the Departmental Committee on ICT.",
+        constitutionalBasis: "Article 118(1)(b) & Article 201(a)",
+        timestamp: Date.now() - 1000 * 60 * 45, // 45 mins ago
+        read: false,
+        type: "stage_transition",
+        urgency: "high"
+      },
+      {
+        id: "notif_init_2",
+        policyTitle: "National Healthcare & Primary Network Modernization",
+        stageName: "Committee Review & PBO Scrutiny",
+        stepNumber: 3,
+        domain: "Healthcare & Universal Access",
+        citizenAction: "Parliamentary Budget Office published debt impact note under PFM Act Section 39.",
+        constitutionalBasis: "Article 43(1)(a) & Article 201(c)",
+        timestamp: Date.now() - 1000 * 60 * 180, // 3 hours ago
+        read: true,
+        type: "fiscal_alert",
+        urgency: "medium"
+      }
+    ];
+  });
+
+  const saveNotificationsToStorage = (updated: PolicyNotification[]) => {
+    setAuditNotifications(updated);
+    try {
+      localStorage.setItem("kenya2027_audit_notifications", JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Failed saving audit notifications:", e);
+    }
+  };
+
+  const handleMarkNotificationAsRead = (id: string) => {
+    const updated = auditNotifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+    saveNotificationsToStorage(updated);
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    const updated = auditNotifications.map((n) => ({ ...n, read: true }));
+    saveNotificationsToStorage(updated);
+  };
+
+  const handleClearAllNotifications = () => {
+    saveNotificationsToStorage([]);
+  };
+
+  // Legislative Stage Transition Toast System & Notification Logging
+  const [legislativeToast, setLegislativeToast] = useState<{
+    id: string;
+    stageName: string;
+    stepNumber: number;
+    citizenAction: string;
+    constitutionalBasis: string;
+    timestamp: number;
+  } | null>(null);
+
+  const handleLegislativeStageChange = (newStage: LegislativeStageInfo) => {
+    const currentTitle = inputText.trim() 
+      ? inputText.slice(0, 70).split("\n")[0] 
+      : "Active Audited Proposal";
+
+    // 1. Trigger live Toast
+    setLegislativeToast({
+      id: `${Date.now()}`,
+      stageName: newStage.title,
+      stepNumber: newStage.stepNumber,
+      citizenAction: newStage.citizenAction,
+      constitutionalBasis: newStage.constitutionalBasis,
+      timestamp: Date.now()
+    });
+
+    // 2. Append new alert to Notification Center (persisting to localStorage)
+    const newNotif: PolicyNotification = {
+      id: `notif_${Date.now()}`,
+      policyTitle: currentTitle,
+      stageName: newStage.title,
+      stepNumber: newStage.stepNumber,
+      domain: selectedDomain,
+      citizenAction: newStage.citizenAction,
+      constitutionalBasis: newStage.constitutionalBasis,
+      timestamp: Date.now(),
+      read: false,
+      type: newStage.stepNumber === 4 ? "vote_passed" : "stage_transition",
+      urgency: "high"
+    };
+
+    const updated = [newNotif, ...auditNotifications.filter((n) => n.id !== newNotif.id)].slice(0, 15);
+    saveNotificationsToStorage(updated);
+
+    // Auto-dismiss toast after 6.5 seconds
+    setTimeout(() => {
+      setLegislativeToast((prev) => (prev && Date.now() - prev.timestamp >= 6000 ? null : prev));
+    }, 6500);
+  };
+
+  const handleTriggerTestNotification = () => {
+    const mockStages: { title: string; stepNumber: number; citizenAction: string; constitutionalBasis: string }[] = [
+      {
+        title: "2. Public Participation Hearing (Article 118)",
+        stepNumber: 2,
+        citizenAction: "Submissions open for 14 days at County Commissioner desks & Parliament portal.",
+        constitutionalBasis: "Article 118 & High Court Directives"
+      },
+      {
+        title: "3. Parliamentary Budget Office (PBO) Fiscal Scrutiny",
+        stepNumber: 3,
+        citizenAction: "Review PBO Cost-Benefit Audit and Public Debt Ceiling Impact.",
+        constitutionalBasis: "Public Finance Management Act Section 39"
+      },
+      {
+        title: "4. Parliamentary Plenary Second Reading & Voting",
+        stepNumber: 4,
+        citizenAction: "View roll-call votes on Hansard and citizen constituency scoreboard.",
+        constitutionalBasis: "Constitution Articles 109-113 & Article 122"
+      }
+    ];
+
+    const randomStage = mockStages[Math.floor(Math.random() * mockStages.length)];
+    const simulatedStage: LegislativeStageInfo = {
+      key: "public_participation",
+      stepNumber: randomStage.stepNumber,
+      title: randomStage.title,
+      shortName: randomStage.title.split(". ")[1] || "Active Stage",
+      description: "Policy milestone reached.",
+      constitutionalBasis: randomStage.constitutionalBasis,
+      oversightBody: "National Assembly / Senate",
+      citizenAction: randomStage.citizenAction,
+      keyDeliverables: ["Fiscal Memorandum", "Hansard Record"],
+      riskIfBypassed: "Unconstitutional enactment.",
+      defaultTimeline: "14 Days",
+      statusBadge: "Current Active Stage"
+    };
+
+    handleLegislativeStageChange(simulatedStage);
+  };
 
   // Radar Comparison Modal, AI Briefing Note Modal, & Template Modal State
   const [isRadarComparisonOpen, setIsRadarComparisonOpen] = useState(false);
@@ -263,7 +504,7 @@ export const PolicyAuditTool: React.FC = () => {
     setRecordingVoiceIdx(null);
   };
 
-  // Personal Notes per Criterion Card (Browser-Stored in localStorage)
+  // Personal Notes per Criterion Card (Browser-Stored in localStorage with Sync Feedback)
   const [personalNotes, setPersonalNotes] = useState<Record<number, string>>(() => {
     try {
       const saved = localStorage.getItem("kenya2027_policy_audit_personal_notes");
@@ -274,22 +515,33 @@ export const PolicyAuditTool: React.FC = () => {
   });
   const [expandedPersonalNoteCards, setExpandedPersonalNoteCards] = useState<Record<number, boolean>>({});
   const [tempNoteText, setTempNoteText] = useState<Record<number, string>>({});
+  const [noteSyncStatus, setNoteSyncStatus] = useState<Record<number, "synced" | "saving" | "unsaved">>({});
+  const [noteLastSavedAt, setNoteLastSavedAt] = useState<Record<number, string>>({});
 
   const togglePersonalNote = (idx: number) => {
     setExpandedPersonalNoteCards((prev) => {
       const nextState = !prev[idx];
       if (nextState && tempNoteText[idx] === undefined) {
         setTempNoteText((t) => ({ ...t, [idx]: personalNotes[idx] || "" }));
+        if (personalNotes[idx]) {
+          setNoteSyncStatus((s) => ({ ...s, [idx]: "synced" }));
+        }
       }
       return { ...prev, [idx]: nextState };
     });
+  };
+
+  const handleNoteTextChange = (idx: number, newText: string) => {
+    setTempNoteText((t) => ({ ...t, [idx]: newText }));
+    setNoteSyncStatus((s) => ({ ...s, [idx]: "unsaved" }));
   };
 
   const handleSavePersonalNote = (idx: number) => {
     if (recordingVoiceIdx === idx) {
       stopVoiceDictation();
     }
-    const textToSave = tempNoteText[idx] || "";
+    setNoteSyncStatus((s) => ({ ...s, [idx]: "saving" }));
+    const textToSave = tempNoteText[idx] !== undefined ? tempNoteText[idx] : personalNotes[idx] || "";
     const updated = { ...personalNotes, [idx]: textToSave };
     if (!textToSave.trim()) {
       delete updated[idx];
@@ -297,8 +549,14 @@ export const PolicyAuditTool: React.FC = () => {
     setPersonalNotes(updated);
     try {
       localStorage.setItem("kenya2027_policy_audit_personal_notes", JSON.stringify(updated));
+      const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setNoteLastSavedAt((t) => ({ ...t, [idx]: timeString }));
+      setTimeout(() => {
+        setNoteSyncStatus((s) => ({ ...s, [idx]: "synced" }));
+      }, 350);
     } catch (e) {
       console.error("Failed to save personal note to localStorage:", e);
+      setNoteSyncStatus((s) => ({ ...s, [idx]: "unsaved" }));
     }
   };
 
@@ -314,6 +572,11 @@ export const PolicyAuditTool: React.FC = () => {
       delete copy[idx];
       return copy;
     });
+    setNoteSyncStatus((s) => {
+      const copy = { ...s };
+      delete copy[idx];
+      return copy;
+    });
     try {
       localStorage.setItem("kenya2027_policy_audit_personal_notes", JSON.stringify(updated));
     } catch (e) {
@@ -325,6 +588,30 @@ export const PolicyAuditTool: React.FC = () => {
   const [expandedSources, setExpandedSources] = useState<Record<number, boolean>>({});
   const [allSourcesExpanded, setAllSourcesExpanded] = useState<boolean>(false);
   const [criteriaViewMode, setCriteriaViewMode] = useState<"cards" | "matrix">("cards");
+
+  // Email Share Modal State
+  const [isEmailShareModalOpen, setIsEmailShareModalOpen] = useState<boolean>(false);
+
+  // Policy Audit Feedback Modal State
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
+  const [feedbackCriterionTarget, setFeedbackCriterionTarget] = useState<string>("Overall Policy Assessment");
+
+  // Advanced Analytical Modals: Fiscal Impact Simulator, Network Graph, Case Study Bundler
+  const [isFiscalSimulatorModalOpen, setIsFiscalSimulatorModalOpen] = useState<boolean>(false);
+  const [isNetworkGraphModalOpen, setIsNetworkGraphModalOpen] = useState<boolean>(false);
+  const [isCaseStudyBundlerModalOpen, setIsCaseStudyBundlerModalOpen] = useState<boolean>(false);
+
+  // Gemini-Powered "Explain Like I'm Five" (ELI5) State
+  const [isELI5Enabled, setIsELI5Enabled] = useState<boolean>(false);
+
+  // Listen for global keyboard shortcut toggle (Ctrl+E)
+  useEffect(() => {
+    const handleToggleELI5 = () => {
+      setIsELI5Enabled((prev) => !prev);
+    };
+    window.addEventListener("kenya2027:toggle-eli5", handleToggleELI5);
+    return () => window.removeEventListener("kenya2027:toggle-eli5", handleToggleELI5);
+  }, []);
 
   const toggleSource = (idx: number) => {
     setExpandedSources((prev) => ({
@@ -394,6 +681,11 @@ export const PolicyAuditTool: React.FC = () => {
       const data = await response.json();
       if (data.result) {
         setResult(data.result);
+        // Save to Recent Audit History (Last 5 tracked items)
+        const computedScore = computeWeightedScore(data.result.verdict_score, weightedSettings);
+        saveToAuditHistory(text, selectedDomain, actorType, computedScore, data.result);
+        // Save to Search Query History
+        saveSearchQuery(text, selectedDomain, actorType);
       } else {
         throw new Error("Invalid response format received from evaluation engine.");
       }
@@ -405,11 +697,78 @@ export const PolicyAuditTool: React.FC = () => {
     }
   };
 
+  const handleSelectRecentAudit = (item: RecentAuditItem) => {
+    setInputText(item.proposalText);
+    setSelectedDomain(item.domain);
+    setActorType(item.actorType);
+    if (item.savedResult) {
+      setResult(item.savedResult);
+    } else {
+      handleEvaluate(item.proposalText);
+    }
+  };
+
   const handleSelectSample = (sample: typeof SAMPLE_PROPOSALS[0]) => {
     setInputText(sample.text);
     setSelectedDomain(sample.domain);
     setActorType(sample.actor);
     handleEvaluate(sample.text);
+  };
+
+  const handleVoiceAudit = (policyQuery: string, shouldAutoSubmit: boolean = true) => {
+    if (!policyQuery || !policyQuery.trim()) return;
+    const cleanQuery = policyQuery.trim();
+    setInputText(cleanQuery);
+
+    // Auto-detect domain from voice query text
+    const lower = cleanQuery.toLowerCase();
+    let detectedDomain = selectedDomain;
+
+    if (lower.includes("health") || lower.includes("hospital") || lower.includes("shif") || lower.includes("sha") || lower.includes("doctor")) {
+      detectedDomain = "Healthcare & Universal Access";
+    } else if (lower.includes("youth") || lower.includes("job") || lower.includes("employment") || lower.includes("digital") || lower.includes("hustler")) {
+      detectedDomain = "Employment & Youth Opportunities";
+    } else if (lower.includes("farm") || lower.includes("agriculture") || lower.includes("fertilizer") || lower.includes("dam") || lower.includes("food") || lower.includes("maize") || lower.includes("tea") || lower.includes("coffee")) {
+      detectedDomain = "Agriculture & Food Security";
+    } else if (lower.includes("school") || lower.includes("education") || lower.includes("cbc") || lower.includes("university") || lower.includes("hef") || lower.includes("capitation")) {
+      detectedDomain = "Education & CBC/University";
+    } else if (lower.includes("house") || lower.includes("housing") || lower.includes("rent") || lower.includes("boma")) {
+      detectedDomain = "Affordable Housing";
+    } else if (lower.includes("tax") || lower.includes("vat") || lower.includes("kra") || lower.includes("revenue") || lower.includes("levy") || lower.includes("duty")) {
+      detectedDomain = "Taxation & Revenue Systems";
+    } else if (lower.includes("debt") || lower.includes("eurobond") || lower.includes("loan") || lower.includes("borrow") || lower.includes("treasury")) {
+      detectedDomain = "National Debt & Public Finance";
+    } else if (lower.includes("county") || lower.includes("devolution") || lower.includes("ward") || lower.includes("governor") || lower.includes("devolve")) {
+      detectedDomain = "Devolution & 47 Counties";
+    } else if (lower.includes("tech") || lower.includes("ai") || lower.includes("fiber") || lower.includes("internet")) {
+      detectedDomain = "Technology & AI";
+    } else if (lower.includes("power") || lower.includes("energy") || lower.includes("electricity") || lower.includes("kplc") || lower.includes("tariff")) {
+      detectedDomain = "Energy & Power Tariffs";
+    } else if (lower.includes("road") || lower.includes("rail") || lower.includes("sgr") || lower.includes("port") || lower.includes("transport")) {
+      detectedDomain = "Infrastructure & Transport";
+    } else if (lower.includes("corrupt") || lower.includes("eacc") || lower.includes("chapter 6") || lower.includes("integrity")) {
+      detectedDomain = "Corruption & Chapter 6";
+    }
+
+    setSelectedDomain(detectedDomain);
+
+    // Check if query closely matches a known sample proposal
+    const matchedSample = SAMPLE_PROPOSALS.find(p => 
+      p.title.toLowerCase().includes(lower) || 
+      lower.includes(p.domain.toLowerCase()) ||
+      lower.includes(p.title.toLowerCase().split(" ")[0])
+    );
+
+    const textToRun = matchedSample ? matchedSample.text : cleanQuery;
+    if (matchedSample) {
+      setSelectedDomain(matchedSample.domain);
+      setInputText(matchedSample.text);
+      setActorType(matchedSample.actor);
+    }
+
+    if (shouldAutoSubmit) {
+      handleEvaluate(textToRun);
+    }
   };
 
   // Manifesto Distiller (Gemini API /api/distill-manifesto)
@@ -482,7 +841,16 @@ export const PolicyAuditTool: React.FC = () => {
     handleEvaluate(distilledSummaryText);
   };
 
-  const handleExportPdf = () => {
+  const handleOpenPdfModal = () => {
+    if (!result) return;
+    const defaultTitle = inputText.trim()
+      ? `Kenya 2027 Policy Rigor Audit: ${inputText.slice(0, 55).split(".")[0]}`
+      : `Kenya 2027 Policy Rigor Audit: ${selectedDomain}`;
+    setPdfReportTitle(defaultTitle);
+    setIsPdfConfigModalOpen(true);
+  };
+
+  const handleConfirmPdfExport = () => {
     if (!result) return;
     setIsExportingPdf(true);
     try {
@@ -494,8 +862,12 @@ export const PolicyAuditTool: React.FC = () => {
         evaluationResult: result,
         distillationResult: distilledResult,
         weightedScore: weightedScore,
-        weightedSettings: weightedSettings
+        weightedSettings: weightedSettings,
+        reportTitle: pdfReportTitle.trim() || undefined,
+        authorName: pdfAuthorName.trim() || undefined,
+        analysisDate: pdfAnalysisDate || undefined
       });
+      setIsPdfConfigModalOpen(false);
     } catch (err) {
       console.error("PDF Export error:", err);
     } finally {
@@ -503,12 +875,26 @@ export const PolicyAuditTool: React.FC = () => {
     }
   };
 
+  const handleExportPdf = () => {
+    handleOpenPdfModal();
+  };
+
   const handleExportAuditCsv = () => {
     if (!result) return;
     const weightedScore = computeWeightedScore(result.verdict_score, weightedSettings);
+    
+    // Compute Confidence & Evidence breakdown metrics
+    const clearPoints = result.the_13_point_audit?.filter(p => p.status === "Clear").length || 0;
+    const ambiguousPoints = result.the_13_point_audit?.filter(p => p.status === "Ambiguous").length || 0;
+    const missingPoints = result.the_13_point_audit?.filter(p => p.status === "Missing/Risk").length || 0;
+    const factsCount = result.fact_evidence_breakdown?.facts?.length || 0;
+    const claimsCount = result.fact_evidence_breakdown?.claims?.length || 0;
+    const uncertaintiesCount = result.fact_evidence_breakdown?.uncertainties?.length || 0;
+    const groundingSourcesCount = result.grounding_metadata?.sources?.length || 0;
+
     const rows: string[][] = [
-      ["Kenya 2027 Civic Policy Audit Tool - Raw Criterion Dataset"],
-      ["Audited Policy / Proposal", `"${(inputText.slice(0, 120)).replace(/"/g, '""')}"`],
+      ["Kenya 2027 Civic Policy Audit Tool - Full Verification & Scrutiny Dataset"],
+      ["Audited Policy / Proposal", `"${(inputText.slice(0, 150)).replace(/"/g, '""')}"`],
       ["Policy Domain", `"${selectedDomain.replace(/"/g, '""')}"`],
       ["Political Actor Type", `"${actorType.replace(/"/g, '""')}"`],
       ["Weighted Composite Rigor Score", `${weightedScore}/100`],
@@ -517,7 +903,8 @@ export const PolicyAuditTool: React.FC = () => {
       ["Kenya 2060 Long-Term Alignment", `${result.verdict_score.kenya_2060_alignment_score}/10`],
       ["Implementation Readiness Score", `${result.verdict_score.implementation_readiness_score}/10`],
       ["Clarity & Specifics Score", `${result.verdict_score.clarity_score}/10`],
-      ["Export Date", new Date().toISOString()],
+      ["Confidence & Verification Metrics", `"Clear Criteria: ${clearPoints}/13, Verified Facts: ${factsCount}, PBO Claims: ${claimsCount}, Uncertainties: ${uncertaintiesCount}, Live Sources: ${groundingSourcesCount}"`],
+      ["Export Timestamp", new Date().toISOString()],
       [],
       [
         "Criterion Number",
@@ -554,11 +941,29 @@ export const PolicyAuditTool: React.FC = () => {
       ]);
     });
 
+    // Add Evidence Breakdown rows
+    if (result.fact_evidence_breakdown?.facts && result.fact_evidence_breakdown.facts.length > 0) {
+      rows.push([]);
+      rows.push(["Verified Factual Baselines (KNBS/CBK/Treasury)"]);
+      result.fact_evidence_breakdown.facts.forEach((fact, i) => {
+        rows.push([`Fact #${i + 1}`, `"${fact.replace(/"/g, '""')}"`]);
+      });
+    }
+
+    if (result.fact_evidence_breakdown?.claims && result.fact_evidence_breakdown.claims.length > 0) {
+      rows.push([]);
+      rows.push(["Manifesto Claims Requiring Parliamentary Budget Office (PBO) Proof"]);
+      result.fact_evidence_breakdown.claims.forEach((claim, i) => {
+        rows.push([`Claim #${i + 1}`, `"${claim.replace(/"/g, '""')}"`]);
+      });
+    }
+
     const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `kenya2027_policy_audit_${selectedDomain.toLowerCase().replace(/[^a-z0-9]/g, "_")}_raw_data.csv`);
+    const safeDomainSlug = (selectedDomain || "general").toLowerCase().replace(/[^a-z0-9]/g, "_");
+    link.setAttribute("download", `kenya2027_policy_audit_${safeDomainSlug}_dataset.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -567,20 +972,56 @@ export const PolicyAuditTool: React.FC = () => {
   const handleExportAuditJson = () => {
     if (!result) return;
     const weightedScore = computeWeightedScore(result.verdict_score, weightedSettings);
-    const data = {
+    
+    // Compute Confidence & Evidence metrics
+    const clearCount = result.the_13_point_audit?.filter(p => p.status === "Clear").length || 0;
+    const ambiguousCount = result.the_13_point_audit?.filter(p => p.status === "Ambiguous").length || 0;
+    const missingCount = result.the_13_point_audit?.filter(p => p.status === "Missing/Risk").length || 0;
+    const factsCount = result.fact_evidence_breakdown?.facts?.length || 0;
+    const claimsCount = result.fact_evidence_breakdown?.claims?.length || 0;
+    const uncertaintiesCount = result.fact_evidence_breakdown?.uncertainties?.length || 0;
+    const sourcesCount = result.grounding_metadata?.sources?.length || 0;
+    const confidenceScore = Math.min(
+      99,
+      Math.max(
+        15,
+        Math.round(
+          (clearCount * 4.5) +
+          (factsCount * 3.2) +
+          (sourcesCount * 2.8) -
+          (missingCount * 3.5) -
+          (uncertaintiesCount * 2.0) +
+          25
+        )
+      )
+    );
+
+    const fullAuditState = {
       metadata: {
-        platform: "Kenya 2027 - The Great Competition of Ideas",
-        auditType: "13-Point Constitutional & Empirical Scrutiny",
-        timestamp: new Date().toISOString(),
+        platform: "Kenya 2027 Civic Scrutiny & Policy Rigor Tool",
+        system: "Non-Partisan 13-Point Constitutional Scrutiny Engine",
+        auditTimestamp: new Date().toISOString(),
         policyDomain: selectedDomain,
         actorType: actorType,
         proposalText: inputText,
         weightedCompositeRigor: weightedScore
       },
-      scores: result.verdict_score,
-      weights: weightedSettings,
+      confidenceMetrics: {
+        compositeConfidenceScore: `${confidenceScore}/100`,
+        confidenceLevel: confidenceScore >= 75 ? "High Empirical Rigor" : confidenceScore >= 50 ? "Moderate Grounding" : "Preliminary / Unverified",
+        clearPointsCount: clearCount,
+        ambiguousPointsCount: ambiguousCount,
+        missingRiskPointsCount: missingCount,
+        verifiedFactsCount: factsCount,
+        manifestoClaimsCount: claimsCount,
+        dataUncertaintiesCount: uncertaintiesCount,
+        liveGroundingSourcesCount: sourcesCount
+      },
+      verdictScores: result.verdict_score,
+      weightedSettings: weightedSettings,
       summary: result.summary,
-      criteria: result.the_13_point_audit?.map((item, idx) => ({
+      personalNotes: personalNotes,
+      the13PointAudit: result.the_13_point_audit?.map((item, idx) => ({
         pointNumber: idx + 1,
         pointName: item.point,
         status: item.status,
@@ -588,14 +1029,18 @@ export const PolicyAuditTool: React.FC = () => {
         citation: getPointStatutoryCitations(idx + 1, selectedDomain),
         personalNote: personalNotes[idx] || null
       })),
-      crossExaminationQuestions: result.citizen_cross_examination_questions,
-      continuityNote: result.continuity_note
+      factEvidenceBreakdown: result.fact_evidence_breakdown || null,
+      groundingMetadata: result.grounding_metadata || null,
+      citizenCrossExaminationQuestions: result.citizen_cross_examination_questions || [],
+      continuityNote: result.continuity_note || null,
+      distilledManifesto: distilledResult || null
     };
 
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(fullAuditState, null, 2))}`;
     const link = document.createElement("a");
     link.setAttribute("href", jsonString);
-    link.setAttribute("download", `kenya2027_policy_audit_${selectedDomain.toLowerCase().replace(/[^a-z0-9]/g, "_")}.json`);
+    const safeDomainSlug = (selectedDomain || "general").toLowerCase().replace(/[^a-z0-9]/g, "_");
+    link.setAttribute("download", `kenya2027_policy_audit_full_state_${safeDomainSlug}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -691,6 +1136,20 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Notification Center (Tracks Legislative Milestones & Toast Alerts) */}
+          <PolicyNotificationCenter
+            notifications={auditNotifications}
+            onMarkAsRead={handleMarkNotificationAsRead}
+            onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+            onClearAll={handleClearAllNotifications}
+            onSelectNotificationPolicy={(polTitle, polDomain) => {
+              setInputText(polTitle);
+              setSelectedDomain(polDomain);
+              handleEvaluate(polTitle);
+            }}
+            onTriggerTestNotification={handleTriggerTestNotification}
+          />
+
           {/* View Density Mode Switcher (Cozy vs Compact) */}
           <div className="inline-flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200">
             <button
@@ -1109,7 +1568,13 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                   Paste Proposal or Speech for Scrutiny
                 </h3>
               </div>
-              <div className="flex flex-wrap gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {/* Global Voice Command Listener */}
+                <PolicyVoiceCommandListener
+                  onVoiceAudit={handleVoiceAudit}
+                  isEvaluating={isLoading}
+                />
+
                 <select
                   value={selectedDomain}
                   onChange={(e) => setSelectedDomain(e.target.value)}
@@ -1153,6 +1618,41 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
               className="w-full p-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all leading-relaxed"
               id="proposal-input-textarea"
             />
+
+            {/* Search History Feature (Stored last 5 search queries in local storage) */}
+            {searchHistoryQueries.length > 0 && (
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <History className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Search History (Past {searchHistoryQueries.length} Audits)</span>
+                  </div>
+                  <button
+                    onClick={clearSearchQueries}
+                    className="text-[11px] text-slate-400 hover:text-rose-600 transition-colors font-medium cursor-pointer"
+                    title="Clear stored search queries"
+                  >
+                    Clear History
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {searchHistoryQueries.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSelectSearchHistory(item)}
+                      className="group inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-2xs bg-slate-100 hover:bg-emerald-50 hover:text-emerald-900 border border-slate-200 hover:border-emerald-300 text-slate-700 transition-all cursor-pointer text-left max-w-full sm:max-w-[280px]"
+                      title={`Re-run audit: "${item.query}" (${item.domain})`}
+                    >
+                      <History className="w-3 h-3 text-slate-400 group-hover:text-emerald-600 shrink-0" />
+                      <span className="truncate font-medium">{item.query}</span>
+                      <span className="shrink-0 bg-slate-200 group-hover:bg-emerald-200 px-1 py-0.2 rounded text-[9px] font-bold text-slate-600 group-hover:text-emerald-800">
+                        {item.domain.split(" ")[0]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center space-x-2 p-3 rounded-lg bg-red-50 text-red-900 text-xs border border-red-200">
@@ -1255,6 +1755,64 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {/* Fiscal Impact Simulator Button */}
+                    <button
+                      onClick={() => setIsFiscalSimulatorModalOpen(true)}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-teal-700 hover:bg-teal-800 text-white transition-colors shadow-2xs cursor-pointer"
+                      title="Test real-time macro-economic scenario shifts on Kenya 2060 Radar projections"
+                      id="open-fiscal-simulator-btn"
+                    >
+                      <Sliders className="w-3.5 h-3.5 text-teal-200" />
+                      <span>Fiscal Simulator</span>
+                    </button>
+
+                    {/* D3 Influence Network Button */}
+                    <button
+                      onClick={() => setIsNetworkGraphModalOpen(true)}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white transition-colors shadow-2xs cursor-pointer"
+                      title="Explore interactive D3 force-directed network mapping politicians, policies, and lobbying groups"
+                      id="open-influence-network-btn"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-indigo-200" />
+                      <span>Influence Network (D3)</span>
+                    </button>
+
+                    {/* Bundle Case Study Button */}
+                    <button
+                      onClick={() => setIsCaseStudyBundlerModalOpen(true)}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-blue-700 hover:bg-blue-800 text-white transition-colors shadow-2xs cursor-pointer"
+                      title="Bundle multiple audited policies into a comprehensive Civic Case Study for social & civic sharing"
+                      id="bundle-case-study-btn"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-blue-200" />
+                      <span>Bundle Case Study</span>
+                    </button>
+
+                    {/* Share via Email Button */}
+                    <button
+                      onClick={() => setIsEmailShareModalOpen(true)}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition-colors shadow-2xs cursor-pointer"
+                      title="Send pre-populated executive audit summary via email"
+                      id="share-via-email-btn"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Share via Email</span>
+                    </button>
+
+                    {/* Provide Audit Feedback Button */}
+                    <button
+                      onClick={() => {
+                        setFeedbackCriterionTarget("Overall Policy Assessment");
+                        setIsFeedbackModalOpen(true);
+                      }}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                      title="Flag potential inaccuracies or propose statutory corrections"
+                      id="provide-audit-feedback-btn"
+                    >
+                      <MessageSquareQuote className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Provide Audit Feedback</span>
+                    </button>
+
                     {/* AI 1-Page Briefing Note Generator Button */}
                     <button
                       onClick={() => setIsBriefingNoteModalOpen(true)}
@@ -1277,38 +1835,38 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                       <span>Download Report as PDF</span>
                     </button>
 
-                    {/* PDF Export Button (Direct jsPDF document) */}
+                    {/* PDF Export Button (Opens configurable metadata form prior to jsPDF generation) */}
                     <button
-                      onClick={handleExportPdf}
+                      onClick={handleOpenPdfModal}
                       disabled={isExportingPdf}
                       className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-2xs cursor-pointer"
-                      title="Generate Direct PDF Document"
+                      title="Generate Configured PDF Document (Custom Title, Author, Date)"
                       id="export-pdf-summary-btn"
                     >
                       <Printer className="w-3.5 h-3.5 text-slate-300" />
-                      <span>{isExportingPdf ? "Exporting..." : "Raw PDF"}</span>
+                      <span>{isExportingPdf ? "Exporting..." : "Custom PDF Report"}</span>
                     </button>
 
-                    {/* CSV Data Export */}
+                    {/* Export Data Button (Formats all visible audit criterion data and confidence metrics into downloadable CSV) */}
                     <button
                       onClick={handleExportAuditCsv}
-                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-2xs"
-                      title="Download Analysis as CSV Spreadsheet"
-                      id="export-csv-summary-btn"
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition-colors shadow-2xs cursor-pointer"
+                      title="Export Data: Format all visible audit criterion data and confidence metrics into a downloadable CSV file"
+                      id="export-data-csv-btn"
                     >
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>CSV</span>
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Export Data (CSV)</span>
                     </button>
 
                     {/* JSON Data Export */}
                     <button
                       onClick={handleExportAuditJson}
-                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-2xs"
-                      title="Download Analysis as JSON Data"
-                      id="export-json-summary-btn"
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-2xs cursor-pointer"
+                      title="Export as JSON: Export full audit state, criteria, confidence score, and personal notes as structured JSON file"
+                      id="export-audit-json-btn"
                     >
                       <FileCode className="w-3.5 h-3.5 text-amber-300" />
-                      <span>JSON</span>
+                      <span>Export as JSON</span>
                     </button>
 
                     {/* Bookmark to Watchlist */}
@@ -1334,6 +1892,31 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                       )}
                     </button>
 
+                    {/* Email Share Pre-Populated Template */}
+                    <button
+                      onClick={() => setIsEmailShareModalOpen(true)}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-2xs cursor-pointer"
+                      title="Share Audit via Pre-Populated Email Template"
+                      id="share-email-audit-btn"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Email Report</span>
+                    </button>
+
+                    {/* Provide Audit Feedback & Source Correction Button */}
+                    <button
+                      onClick={() => {
+                        setFeedbackCriterionTarget("Overall Policy Assessment");
+                        setIsFeedbackModalOpen(true);
+                      }}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                      title="Provide feedback, flag inaccuracies, or suggest empirical sources for this audit"
+                      id="provide-audit-feedback-btn"
+                    >
+                      <MessageSquareQuote className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Provide Audit Feedback</span>
+                    </button>
+
                     <button
                       onClick={handleCopyScorecard}
                       className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors"
@@ -1345,10 +1928,10 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                   </div>
                 </div>
 
-                {/* Score Indicators Grid with Algorithmic Confidence Score Ring */}
+                {/* Score Indicators Grid with Recharts Circular Confidence Gauge Chart */}
                 <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2">
-                    <PolicyConfidenceScoreRing
+                    <PolicyConfidenceGaugeChart
                       result={result}
                       selectedDomain={selectedDomain}
                     />
@@ -1606,6 +2189,23 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                 summaryText={result.summary}
               />
 
+              {/* CITIZEN QUICK POLL: KENYA 2060 REALISTIC ALIGNMENT CHECK */}
+              <PolicyQuickPoll
+                policyTitle={inputText.slice(0, 80) || "Audited Policy Proposal"}
+                domain={selectedDomain}
+                alignmentScore={result.verdict_score.kenya_2060_alignment_score}
+              />
+
+              {/* GEMINI-POWERED EXPLAIN LIKE I'M FIVE (ELI5) INTERACTIVE CARD & ACCESSIBLE REWRITER */}
+              <PolicyELI5Card
+                proposalText={inputText}
+                summaryText={result.summary}
+                domain={selectedDomain}
+                verdictScore={result.verdict_score}
+                isEnabled={isELI5Enabled}
+                onToggle={() => setIsELI5Enabled(!isELI5Enabled)}
+              />
+
               {/* Slogan to Plan Callout */}
               {result.slogan_to_plan_translation && (
                 <div className="bg-amber-50/80 rounded-xl p-5 border border-amber-200 flex items-start space-x-3">
@@ -1664,10 +2264,39 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                 onOpenComparison={() => setIsRadarComparisonOpen(true)}
               />
 
+              {/* FISCAL IMPACT MACROECONOMIC SIMULATOR (Live Macroeconomic Controls Shifting Radar Projections) */}
+              <FiscalImpactSimulator
+                evaluationResult={result}
+                policyTitle={inputText.slice(0, 70) || "Audited Policy Measure"}
+                domainName={selectedDomain}
+              />
+
+              {/* KENYA 2060 TRANSFORMATION IMPACT SCORE COMPONENT */}
+              <PolicyKenya2060ImpactScore
+                result={result}
+                selectedDomain={selectedDomain}
+                proposalText={inputText}
+              />
+
+              {/* VISUAL LEGISLATIVE PROCESS STAGE TRACKER (Proposal -> Public Participation -> Committee -> Vote -> Assent) */}
+              <PolicyLegislativeStageTracker
+                result={result}
+                policyTitle={inputText}
+                domain={selectedDomain}
+                onStageChange={handleLegislativeStageChange}
+              />
+
               {/* GEOGRAPHICAL HEATMAP & ARTICLE 201(b) SPATIAL DISTRIBUTION */}
               <PolicyRegionalHeatmap
                 policyDomain={selectedDomain}
                 policyTitle={inputText.slice(0, 60) || "Audited Policy Proposal"}
+              />
+
+              {/* STATUTORY POLICY LIFECYCLE TIMELINE (Proposal -> Debate -> Assent -> OAG Audit) */}
+              <PolicyLifecycleTimeline
+                policyTitle={inputText.slice(0, 80) || "Audited Policy Proposal"}
+                domainName={selectedDomain}
+                currentStageId={1}
               />
 
               {/* Fact vs Claim vs Evidence Taxonomy Breakdown */}
@@ -1852,10 +2481,10 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                                 {isSourceExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                               </button>
 
-                              {/* Personal Note Toggle Button */}
+                              {/* Personal Note Toggle Button with Live Sync Indicator */}
                               <button
                                 onClick={() => togglePersonalNote(idx)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer ${
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer ${
                                   personalNotes[idx]
                                     ? "bg-amber-50 text-amber-900 border-amber-300 shadow-2xs font-bold"
                                     : expandedPersonalNoteCards[idx]
@@ -1867,6 +2496,25 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                               >
                                 <StickyNote className={`w-3 h-3 ${personalNotes[idx] ? "text-amber-600 fill-amber-300" : "text-amber-600"}`} />
                                 <span>{personalNotes[idx] ? "Note Saved" : "Personal Note"}</span>
+                                {personalNotes[idx] && (
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full bg-emerald-500"
+                                    title="Note Synced to Local Browser Storage"
+                                  />
+                                )}
+                              </button>
+
+                              {/* Flag / Provide Feedback Button for this Point */}
+                              <button
+                                onClick={() => {
+                                  setFeedbackCriterionTarget(`Point ${idx + 1}: ${item.point}`);
+                                  setIsFeedbackModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200 bg-slate-50 hover:bg-amber-50 text-slate-600 hover:text-amber-900 hover:border-amber-300 transition-all cursor-pointer"
+                                title="Flag potential inaccuracies or propose sources for this specific criterion"
+                              >
+                                <Flag className="w-3 h-3 text-amber-600" />
+                                <span>Flag / Feedback</span>
                               </button>
                             </div>
                           </div>
@@ -1928,26 +2576,50 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                             </div>
                           )}
 
-                          {/* Personal Note Local-Storage Drawer */}
+                          {/* Personal Note Local-Storage Drawer with Enhanced Sync Indicator */}
                           {expandedPersonalNoteCards[idx] && (
                             <div className="ml-8 mt-2 p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 animate-in fade-in duration-200 space-y-2.5 text-xs">
                               <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                                 <div className="flex items-center space-x-1.5 text-amber-900 font-bold">
                                   <StickyNote className="w-3.5 h-3.5 text-amber-700" />
-                                  <span>Personal Scrutiny Annotation (Local Browser-Stored)</span>
+                                  <span>Personal Scrutiny Annotation</span>
                                 </div>
-                                {personalNotes[idx] && (
-                                  <button
-                                    onClick={() => handleDeletePersonalNote(idx)}
-                                    className="text-red-600 hover:text-red-800 font-semibold text-[10px] uppercase cursor-pointer"
-                                  >
-                                    Delete Note
-                                  </button>
-                                )}
+
+                                <div className="flex items-center space-x-2">
+                                  {/* Sync Status Badge */}
+                                  {noteSyncStatus[idx] === "saving" ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping"></span>
+                                      <span>Saving to Browser...</span>
+                                    </span>
+                                  ) : noteSyncStatus[idx] === "unsaved" ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                      <span>Unsaved Draft</span>
+                                    </span>
+                                  ) : personalNotes[idx] ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>
+                                        Synced {noteLastSavedAt[idx] ? `(${noteLastSavedAt[idx]})` : "(Stored Locally)"}
+                                      </span>
+                                    </span>
+                                  ) : null}
+
+                                  {personalNotes[idx] && (
+                                    <button
+                                      onClick={() => handleDeletePersonalNote(idx)}
+                                      className="text-red-600 hover:text-red-800 font-semibold text-[10px] uppercase cursor-pointer ml-2"
+                                    >
+                                      Delete
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+
                               <textarea
                                 value={tempNoteText[idx] !== undefined ? tempNoteText[idx] : personalNotes[idx] || ""}
-                                onChange={(e) => setTempNoteText((t) => ({ ...t, [idx]: e.target.value }))}
+                                onChange={(e) => handleNoteTextChange(idx, e.target.value)}
                                 placeholder="Record your personal notes, follow-up questions for candidate debates, or local county impact observations..."
                                 rows={2}
                                 className="w-full p-2.5 rounded-lg border border-amber-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden leading-relaxed"
@@ -1961,12 +2633,25 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                               )}
 
                               <div className="flex flex-wrap justify-between items-center gap-2 pt-0.5">
-                                <div className="flex items-center space-x-2 text-[10px] text-amber-800">
-                                  <span>
-                                    {personalNotes[idx] ? "✓ Note saved to local device storage" : "Unsaved changes"}
-                                  </span>
+                                <div className="flex items-center space-x-2 text-[10px] text-amber-900">
+                                  {noteSyncStatus[idx] === "unsaved" ? (
+                                    <span className="flex items-center gap-1 text-amber-800 font-medium">
+                                      <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                      Unsaved changes in progress. Click "Save Note" below.
+                                    </span>
+                                  ) : personalNotes[idx] ? (
+                                    <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                                      <Check className="w-3 h-3 text-emerald-600" />
+                                      Stored in device browser storage (Private to you).
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-500">
+                                      Private note saved only to your local browser.
+                                    </span>
+                                  )}
+
                                   {recordingVoiceIdx === idx && (
-                                    <span className="flex items-center gap-1 font-bold text-rose-700 animate-pulse">
+                                    <span className="flex items-center gap-1 font-bold text-rose-700 animate-pulse ml-2">
                                       <span className="w-2 h-2 rounded-full bg-rose-600"></span>
                                       Transcribing audio...
                                     </span>
@@ -2007,9 +2692,15 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
 
                                   <button
                                     onClick={() => handleSavePersonalNote(idx)}
-                                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-md text-xs transition-colors shadow-2xs cursor-pointer"
+                                    className={`px-3 py-1 font-bold rounded-md text-xs transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1 ${
+                                      noteSyncStatus[idx] === "unsaved"
+                                        ? "bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300"
+                                        : "bg-amber-600 hover:bg-amber-700 text-white"
+                                    }`}
+                                    id={`save-note-btn-${idx + 1}`}
                                   >
-                                    Save Annotation
+                                    <Check className="w-3 h-3" />
+                                    <span>{noteSyncStatus[idx] === "saving" ? "Saving..." : "Save Note"}</span>
                                   </button>
                                 </div>
                               </div>
@@ -2238,6 +2929,9 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
                 )}
               </div>
 
+              {/* Print-Friendly Legend (Appears automatically in print/PDF mode) */}
+              <PrintFriendlyLegend />
+
               {/* PRINT-ONLY OFFICIAL CIVIC REPORT FOOTER */}
               <div className="print-only print-footer">
                 <div className="flex justify-between items-center text-[8pt] text-slate-500 font-mono">
@@ -2252,9 +2946,12 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
           )}
         </div>
 
-        {/* Right Column: Persistent Collapsible Constitutional Articles Sidebar */}
+        {/* Right Column: Recent Audit History + Persistent Collapsible Constitutional Articles Sidebar */}
         {isSidebarOpen && (
           <div className="lg:col-span-4 sticky top-28 space-y-4">
+            {/* Recent Audit History (Tracks & saves last 5 audited policies) */}
+            <RecentAuditHistory onSelectAudit={handleSelectRecentAudit} />
+
             <ConstitutionalArticlesSidebar
               selectedDomain={selectedDomain}
               isOpen={isSidebarOpen}
@@ -2291,6 +2988,30 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
         />
       )}
 
+      {/* Email Share Pre-Populated Template Modal */}
+      {result && (
+        <PolicyEmailShareModal
+          isOpen={isEmailShareModalOpen}
+          onClose={() => setIsEmailShareModalOpen(false)}
+          result={result}
+          proposalText={inputText}
+          domain={selectedDomain}
+          actorType={actorType}
+          weightedScore={currentWeightedScore || computeWeightedScore(result.verdict_score, weightedSettings)}
+        />
+      )}
+
+      {/* Policy Audit Feedback & Flagging Modal */}
+      <PolicyAuditFeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        result={result}
+        proposalText={inputText}
+        domain={selectedDomain}
+        actorType={actorType}
+        criterionTarget={feedbackCriterionTarget}
+      />
+
       {/* Policy Audit Custom Template Library Modal */}
       <PolicyAuditTemplateModal
         isOpen={isTemplateModalOpen}
@@ -2298,6 +3019,253 @@ ${result.citizen_cross_examination_questions.map((q, i) => `${i + 1}. ${q}`).joi
         currentWeights={weightedSettings}
         onApplyTemplate={handleApplyTemplate}
       />
+
+      {/* User-Configurable PDF Report Metadata Modal */}
+      {isPdfConfigModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Printer className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-bold text-base">Configure PDF Report Header & Metadata</h3>
+              </div>
+              <button
+                onClick={() => setIsPdfConfigModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Customize the header credentials before generating the official citizen scrutiny document. These fields will be stamped onto the document header and verification metadata.
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Report Title</span>
+                </label>
+                <input
+                  type="text"
+                  value={pdfReportTitle}
+                  onChange={(e) => setPdfReportTitle(e.target.value)}
+                  placeholder="e.g. Kenya 2027 Policy Scrutiny: Digital Sovereign Hubs"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-600 bg-slate-50 focus:bg-white transition-all font-medium text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Author / Civic Analyst Name</span>
+                </label>
+                <input
+                  type="text"
+                  value={pdfAuthorName}
+                  onChange={(e) => setPdfAuthorName(e.target.value)}
+                  placeholder="e.g. Civic Policy Analyst / Katiba Scrutiny Desk"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-600 bg-slate-50 focus:bg-white transition-all font-medium text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Date of Analysis</span>
+                </label>
+                <input
+                  type="date"
+                  value={pdfAnalysisDate}
+                  onChange={(e) => setPdfAnalysisDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-600 bg-slate-50 focus:bg-white transition-all font-medium text-slate-900"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-2xs text-slate-600 flex items-center justify-between">
+                <span>Weighted Composite Score Included:</span>
+                <span className="font-bold text-slate-900">{currentWeightedScore || (result ? computeWeightedScore(result.verdict_score, weightedSettings) : 0)}/100</span>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsPdfConfigModalOpen(false)}
+                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPdfExport}
+                disabled={isExportingPdf}
+                className="px-5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isExportingPdf ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Scrutiny PDF</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Fiscal Impact Macroeconomic Simulator Modal */}
+      {isFiscalSimulatorModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="sticky top-0 z-10 px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <Sliders className="w-5 h-5 text-teal-400" />
+                <div>
+                  <h3 className="font-bold text-base text-white">
+                    Fiscal Impact & Kenya 2060 Radar Simulator
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Live macroeconomic stress-testing: GDP growth, inflation, debt ratio, and currency shifts.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsFiscalSimulatorModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Close simulator"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <FiscalImpactSimulator
+                evaluationResult={result}
+                policyTitle={inputText.slice(0, 70) || "Audited Policy Measure"}
+                domainName={selectedDomain}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Force-Directed D3 Policy Influence & Lobbying Network Graph Modal */}
+      {isNetworkGraphModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] h-full overflow-hidden border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <Share2 className="w-5 h-5 text-indigo-400" />
+                <div>
+                  <h3 className="font-bold text-base text-white">
+                    Policy Influence & Lobbying Network Graph (D3 Force Simulation)
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Interactive mapping of political sponsors, special interest lobbying associations, and legislative policies.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsNetworkGraphModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Close network graph"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
+              <PolicyInfluenceNetworkGraph
+                policyTitle={inputText.slice(0, 70) || "Audited Policy Measure"}
+                selectedDomain={selectedDomain}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Civic Case Study Multi-Policy Bundler Modal */}
+      {isCaseStudyBundlerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <Layers className="w-5 h-5 text-blue-400" />
+                <div>
+                  <h3 className="font-bold text-base text-white">
+                    Civic Case Study Dossier Bundler
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Bundle multiple audited policies into a comprehensive long-form civic dossier for social sharing and community oversight.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCaseStudyBundlerModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Close case study bundler"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+              <CivicCaseStudyBundler
+                currentAuditResult={result}
+                currentPolicyTitle={inputText.slice(0, 80) || "Audited Policy Measure"}
+                onClose={() => setIsCaseStudyBundlerModalOpen(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Legislative Stage Transition Toast Notification */}
+      {legislativeToast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in slide-in-from-bottom-5 duration-300">
+          <div className="bg-slate-950 text-white rounded-xl p-4 shadow-2xl border-2 border-emerald-500/80 space-y-2 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-500 animate-pulse" />
+            
+            <div className="flex items-start justify-between gap-2 pt-1">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xs border border-emerald-500/40">
+                  {legislativeToast.stepNumber}
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                    <Bell className="w-3 h-3" />
+                    Legislative Stage Transition Alert
+                  </span>
+                  <h4 className="text-sm font-bold text-white">
+                    Policy Advanced to: {legislativeToast.stageName}
+                  </h4>
+                </div>
+              </div>
+              <button
+                onClick={() => setLegislativeToast(null)}
+                className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-slate-900/90 rounded-lg p-2.5 border border-slate-800 text-xs space-y-1">
+              <div className="text-slate-300">
+                <span className="text-amber-300 font-bold">Action Window: </span>
+                {legislativeToast.citizenAction}
+              </div>
+              <div className="text-2xs text-emerald-300/80 font-mono">
+                {legislativeToast.constitutionalBasis}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

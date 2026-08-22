@@ -227,11 +227,18 @@ export const CivicLeaderboard: React.FC = () => {
   }));
 
   // Filter list
+  const safeSearch = (searchQuery || "").toLowerCase();
+  const safeFilterCounty = (filterCounty || "").toLowerCase();
+
   const filteredList = sortedList.filter(item => {
-    const matchesCounty = filterCounty === "All" || item.county.toLowerCase() === filterCounty.toLowerCase();
-    const matchesSearch = item.handle.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.county.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.category.toLowerCase().includes(searchQuery.toLowerCase());
+    const itemCounty = (item.county || "").toLowerCase();
+    const itemHandle = (item.handle || "").toLowerCase();
+    const itemCategory = (item.category || "").toLowerCase();
+
+    const matchesCounty = filterCounty === "All" || itemCounty === safeFilterCounty;
+    const matchesSearch = itemHandle.includes(safeSearch) || 
+                          itemCounty.includes(safeSearch) ||
+                          itemCategory.includes(safeSearch);
     return matchesCounty && matchesSearch;
   });
 

@@ -35,24 +35,35 @@ export const ConstitutionalArticlesSidebar: React.FC<ConstitutionalArticlesSideb
 
   const categories = ["All", "Public Finance", "Human Rights & Equity", "Devolution", "Governance & Integrity", "Environment & Land"];
 
+  const safeSearch = (searchQuery || "").toLowerCase();
+  const safeSelectedDomain = (selectedDomain || "").toLowerCase();
+
   const filteredArticles = CONSTITUTIONAL_ARTICLES_DATA.filter((art) => {
     const matchesCategory = selectedCategory === "All" || art.category === selectedCategory;
     const matchesSearch = 
-      art.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      art.citizenPlainLanguageMeaning.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      art.keyClauses.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase()));
+      (art.number || "").toLowerCase().includes(safeSearch) ||
+      (art.title || "").toLowerCase().includes(safeSearch) ||
+      (art.citizenPlainLanguageMeaning || "").toLowerCase().includes(safeSearch) ||
+      (art.keyClauses || []).some((c) => (c || "").toLowerCase().includes(safeSearch));
     return matchesCategory && matchesSearch;
   });
 
   // Sort articles so that those directly associated with selectedDomain appear at the top!
   const sortedArticles = [...filteredArticles].sort((a, b) => {
-    const aMatchesDomain = a.associatedDomains.some((d) => 
-      d.toLowerCase().includes(selectedDomain.toLowerCase()) || selectedDomain.toLowerCase().includes(d.toLowerCase())
-    );
-    const bMatchesDomain = b.associatedDomains.some((d) => 
-      d.toLowerCase().includes(selectedDomain.toLowerCase()) || selectedDomain.toLowerCase().includes(d.toLowerCase())
-    );
+    const aMatchesDomain = (a.associatedDomains || []).some((d) => {
+      const dLower = (d || "").toLowerCase();
+      return (
+        safeSelectedDomain.length > 0 &&
+        (dLower.includes(safeSelectedDomain) || safeSelectedDomain.includes(dLower))
+      );
+    });
+    const bMatchesDomain = (b.associatedDomains || []).some((d) => {
+      const dLower = (d || "").toLowerCase();
+      return (
+        safeSelectedDomain.length > 0 &&
+        (dLower.includes(safeSelectedDomain) || safeSelectedDomain.includes(dLower))
+      );
+    });
     if (aMatchesDomain && !bMatchesDomain) return -1;
     if (!aMatchesDomain && bMatchesDomain) return 1;
     return 0;
@@ -153,9 +164,10 @@ export const ConstitutionalArticlesSidebar: React.FC<ConstitutionalArticlesSideb
           <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 max-h-[580px]">
             {sortedArticles.map((art) => {
               const isExpanded = expandedArticleId === art.id;
-              const isDomainMatch = art.associatedDomains.some((d) => 
-                d.toLowerCase().includes(selectedDomain.toLowerCase()) || selectedDomain.toLowerCase().includes(d.toLowerCase())
-              );
+              const isDomainMatch = (art.associatedDomains || []).some((d) => {
+                const dLower = (d || "").toLowerCase();
+                return safeSelectedDomain.length > 0 && (dLower.includes(safeSelectedDomain) || safeSelectedDomain.includes(dLower));
+              });
 
               return (
                 <div

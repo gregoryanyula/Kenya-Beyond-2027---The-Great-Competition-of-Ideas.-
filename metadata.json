@@ -2,7 +2,8 @@
   "name": "Kenya 2027 - The Great Competition of Ideas",
   "description": "A non-partisan civic platform for evaluating political leadership, manifestos, and policies through evidence, costings, constitutional integrity, and Kenya 2060 development outcomes.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "geolocation"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

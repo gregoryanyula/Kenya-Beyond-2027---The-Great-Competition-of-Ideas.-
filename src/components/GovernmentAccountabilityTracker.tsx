@@ -6,17 +6,18 @@ import {
   HelpCircle, 
   Search, 
   Filter, 
-  ExternalLink,
-  ShieldCheck,
-  FileSpreadsheet,
-  BarChart3,
-  TrendingUp,
-  PieChart as PieIcon,
-  Layers,
-  ArrowUpRight,
-  Info,
-  Scale,
-  Video
+  ExternalLink, 
+  ShieldCheck, 
+  FileSpreadsheet, 
+  BarChart3, 
+  TrendingUp, 
+  PieChart as PieIcon, 
+  Layers, 
+  ArrowUpRight, 
+  Info, 
+  Scale, 
+  Video,
+  Vote
 } from "lucide-react";
 import { 
   ResponsiveContainer, 
@@ -28,9 +29,9 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  BarChart,
-  AreaChart,
-  Area
+  BarChart, 
+  AreaChart, 
+  Area 
 } from "recharts";
 import { 
   GOVERNMENT_ACCOUNTABILITY_DATA, 
@@ -39,19 +40,22 @@ import {
 } from "../data/accountabilityData";
 import { PolicyVsPromisesScorecard } from "./PolicyVsPromisesScorecard";
 import { EnhancedDebatePlayback } from "./EnhancedDebatePlayback";
+import { LiveDebatePoll } from "./LiveDebatePoll";
 
 export const GovernmentAccountabilityTracker: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"visualizer" | "scorecard" | "records" | "debate_playback">("visualizer");
+  const [activeTab, setActiveTab] = useState<"visualizer" | "scorecard" | "live_poll" | "records" | "debate_playback">("visualizer");
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const safeSearch = (searchQuery || "").toLowerCase();
 
   const filteredData = GOVERNMENT_ACCOUNTABILITY_DATA.filter((item) => {
     const matchesStatus = filterStatus === "All" || item.deliveryStatus === filterStatus;
     const matchesSearch = 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.manifestoPromise.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.whatHappened.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.domain.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.title || "").toLowerCase().includes(safeSearch) ||
+      (item.manifestoPromise || "").toLowerCase().includes(safeSearch) ||
+      (item.whatHappened || "").toLowerCase().includes(safeSearch) ||
+      (item.domain || "").toLowerCase().includes(safeSearch);
     return matchesStatus && matchesSearch;
   });
 
@@ -84,12 +88,12 @@ export const GovernmentAccountabilityTracker: React.FC = () => {
               “What Was Promised, What Happened, What Did It Cost, and What Remains?”
             </h2>
             <p className="text-slate-600 text-sm leading-relaxed">
-              Auditing the record of the government with strict empirical impartiality. Explore national budget allocation trends, revenue vs. debt service growth, and sector-by-sector budget absorption rates alongside delivery records.
+              Auditing the record of the government with strict empirical impartiality. Explore national budget allocation trends, revenue vs. debt service growth, and live citizen evidence consensus polls alongside sector delivery records.
             </p>
           </div>
 
           {/* Tab Switcher */}
-          <div className="flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200 shrink-0 self-start lg:self-center">
+          <div className="flex flex-wrap items-center p-1 bg-slate-100 rounded-lg border border-slate-200 shrink-0 self-start lg:self-center gap-1">
             <button
               onClick={() => setActiveTab("visualizer")}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
@@ -111,6 +115,18 @@ export const GovernmentAccountabilityTracker: React.FC = () => {
             >
               <Scale className="w-4 h-4" />
               <span>Policy vs Promises</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("live_poll")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                activeTab === "live_poll"
+                  ? "bg-emerald-700 text-white shadow-xs font-black"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              id="tab-live-debate-poll"
+            >
+              <Vote className="w-4 h-4 text-emerald-300" />
+              <span>Live Evidence Poll</span>
             </button>
             <button
               onClick={() => setActiveTab("records")}
@@ -171,6 +187,11 @@ export const GovernmentAccountabilityTracker: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* LIVE EVIDENCE POLL TAB */}
+      {activeTab === "live_poll" && (
+        <LiveDebatePoll />
+      )}
 
       {/* VISUALIZER TAB */}
       {activeTab === "visualizer" && (

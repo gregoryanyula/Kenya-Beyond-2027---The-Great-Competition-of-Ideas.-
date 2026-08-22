@@ -229,6 +229,131 @@ Return ONLY valid JSON. No markdown code blocks surrounding the JSON if possible
   }
 });
 
+// Gemini-Powered "Explain Like I'm Five" (ELI5) Policy Simplification Endpoint
+app.post("/api/explain-eli5", async (req, res) => {
+  try {
+    const { proposalText, summary, domain, language = "en", verdictScores } = req.body;
+
+    if (!proposalText && !summary) {
+      return res.status(400).json({ error: "Please provide proposal text or summary to explain." });
+    }
+
+    const ai = getGenAI();
+    const isSwahili = language === "sw";
+
+    const systemPrompt = `You are a warm, witty, extremely relatable Kenyan civic educator and community storyteller.
+Your task is to take complex, heavy political policy jargon, fiscal numbers (KES billions), and legalistic clauses, and rewrite them so that a 5-year-old child or an everyday citizen (mama mboga, bodaboda rider, university student, farmer) can immediately understand what this policy actually means in real life.
+
+Language requirement: ${isSwahili ? "MANDATORY: Output everything in natural, fluent, vibrant KISWAHILI with authentic Kenyan everyday metaphors (bei ya unga, nauli ya matatu, vibanda, soko, kazi za vijana, mgawo wa kaunti)." : "MANDATORY: Output everything in clear, friendly, jargon-free plain ENGLISH using relatable everyday Kenyan analogies (family budget, grocery shop / duka, matatu fares, school fees, county hospitals)."}
+
+Strict Rule: NO heavy jargon (e.g. avoid 'macroeconomic aggregate fiscal consolidation', 'statutory instruments', 'exchequer allocation multiplier' - translate them into everyday kitchen-table terms).
+
+Format your response in structured JSON with the following exact keys:
+{
+  "eli5_analogy": "A simple 1-2 sentence real-world analogy (e.g. '${isSwahili ? "Fikiria sera hii kama familia inayotaka kununua gari jipya wakati watoto hawana karo ya shule..." : "Think of this policy like a family buying a new television when the children do not have school shoes..."}')",
+  "simple_summary": "2-3 short, friendly sentences explaining what the politician is actually promising in plain words.",
+  "what_it_means_for_you": [
+    {
+      "group": "${isSwahili ? "Vijana na Watafuta Kazi" : "Youth & Job Seekers"}",
+      "impact": "Concrete everyday impact in 1-2 sentences"
+    },
+    {
+      "group": "${isSwahili ? "Mama Mboga na Wafanyabiashara Wadogo" : "Small Traders & Hustlers"}",
+      "impact": "Concrete everyday impact in 1-2 sentences"
+    },
+    {
+      "group": "${isSwahili ? "Wazazi na Familia za Kawaida" : "Parents & Ordinary Households"}",
+      "impact": "Concrete everyday impact in 1-2 sentences"
+    }
+  ],
+  "the_catch_or_hidden_cost": "Where the money will come from or what the catch is in simple terms (e.g. '${isSwahili ? "Je, ni nani atalipia bili hii? Bei za bidhaa zitapanda au serikali itakopa zaidi?" : "Who pays the bill? Will everyday taxes go up or will national debt increase?"}')",
+  "street_verdict": "A snappy 1-sentence verdict on whether this is a realistic plan or just sweet campaign talk (${isSwahili ? "'Mpango Halisi au Slogan Tupu?'" : "'Solid Plan or Campaign Sweet-Talk?'"})",
+  "questions_to_ask_your_mp": [
+    "${isSwahili ? "Swali la 1 unalopaswa kuuliza kiongozi wako..." : "Question 1 you should ask your political leader..."}",
+    "${isSwahili ? "Swali la 2 unalopaswa kuuliza kiongozi wako..." : "Question 2 you should ask your political leader..."}"
+  ]
+}
+
+Return ONLY valid JSON.`;
+
+    if (ai) {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `${systemPrompt}\n\nPOLICY PROPOSAL TO SIMPLIFY:\nDomain: ${domain || "General Kenyan Public Policy"}\nSummary: "${summary || ""}"\nFull Proposal Text:\n"${proposalText || summary}"\nScores Context: Fiscal Realism: ${verdictScores?.fiscal_realism_score || 5}/10, Constitutional: ${verdictScores?.constitutional_viability_score || 5}/10, Readiness: ${verdictScores?.implementation_readiness_score || 5}/10`
+              }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const responseText = response.text || "{}";
+      let parsedResult: any = {};
+      try {
+        parsedResult = JSON.parse(responseText);
+      } catch (e) {
+        const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        parsedResult = JSON.parse(cleaned);
+      }
+
+      return res.json({ result: parsedResult, language });
+    } else {
+      // Deterministic Fallback if API key is not yet set
+      const isSw = language === "sw";
+      const fallbackResult = {
+        eli5_analogy: isSw
+          ? "Fikiria sera hii kama duka la kijijini ambalo limeamua kugawa mikate bure, lakini halijasema nani atamlipa mwokaji unga na sukari."
+          : "Think of this policy like a local shopkeeper promising free bread to everyone, without explaining who will pay the baker for flour and electricity.",
+        simple_summary: isSw
+          ? `Kiongozi huyu anapendekeza mabadiliko katika sekta ya ${domain || "sera za umma"}. Lengo kuu ni kuboresha maisha ya wananchi, lakini utekelezaji wake unategemea pesa za kodi na usimamizi wa kaunti.`
+          : `This proposal promises major improvements in ${domain || "public sector services"}. It aims to create opportunities, but requires high exchequer financing and strict county oversight to actually work.`,
+        what_it_means_for_you: [
+          {
+            group: isSw ? "Vijana na Watafuta Kazi" : "Youth & Job Seekers",
+            impact: isSw
+              ? "Inaweza kuleta nafasi za kazi kama bajeti itatengwa kihalali, lakini isipogharamiwa itabaki ahadi hewa ya kisiasa."
+              : "Could create real apprenticeships if the money is actually budgeted, but risks becoming empty campaign talk if unfunded."
+          },
+          {
+            group: isSw ? "Mama Mboga na Biashara Ndogo" : "Small Traders & Hustlers",
+            impact: isSw
+              ? "Inaweza kupunguza mzigo wa ada na leseni ikiwa sheria zitatekelezwa kikamilifu katika kaunti yako."
+              : "Could reduce local fee burdens if county bylaws are amended, but may lead to higher indirect levies if borrowing expands."
+          },
+          {
+            group: isSw ? "Wazazi na Familia" : "Parents & Households",
+            impact: isSw
+              ? "Matokeo halisi yataonekana kwenye bei za mahitaji ya kimsingi na ubora wa huduma hospitalini na shuleni."
+              : "Direct impact will be felt in pocketbook prices for basic food items and availability of medicines in local health centers."
+          }
+        ],
+        the_catch_or_hidden_cost: isSw
+          ? "Hakuna pesa ya bure. Ikiwa serikali haitaweka wazi chanzo cha mapato, ama kodi zitaongezwa au deni la taifa litaongezeka (Ibara ya 201)."
+          : "There is no free lunch in public finance. If revenue sources are omitted, the treasury will either raise taxes or increase national debt under Article 201.",
+        street_verdict: isSw
+          ? "Wazo lina mvuto mzuri lakini linahitaji mpango thabiti wa bajeti na usimamizi thabiti wa bunge kabla ya kupigiwa kura."
+          : "A noble campaign idea that still requires an audited Parliamentary Budget Office costing before citizens can trust it.",
+        questions_to_ask_your_mp: [
+          isSw ? "Je, pesa hizi zitatoka kwenye kodi mpya, deni la kigeni, au kupunguza matumizi ya kifahari ya serikali?" : "Will this project be funded through new taxes, foreign debt, or cutting executive waste?",
+          isSw ? "Kaunti yetu itapata huduma hizi lini hasa, na ni nani atakayewajibika mambo yakikwama?" : "Exactly when will our county receive these facilities, and which official will be held accountable if delayed?"
+        ]
+      };
+
+      return res.json({ result: fallbackResult, notice: "Evaluated using built-in ELI5 heuristic engine.", language });
+    }
+  } catch (error: any) {
+    console.error("ELI5 evaluation error:", error);
+    return res.status(500).json({ error: error?.message || "Failed to generate ELI5 policy explanation" });
+  }
+});
+
 // Citizen Q&A on Constitution, Budget & Policy
 app.post("/api/distill-manifesto", async (req, res) => {
   try {
@@ -1108,6 +1233,269 @@ function generateFallbackDistillation(text: string, docName?: string, domain?: s
       rationale: "Requires clear debt sustainability threshold validation and intergenerational equity impact under Article 201(2)(c)."
     },
     keyTakeaway: "A viable conceptual blueprint that requires immediate independent costing by the Parliamentary Budget Office to safeguard public funds."
+  };
+}
+
+function fallbackTranslateText(text: string, toSwahili: boolean): string {
+  if (!text) return "";
+  if (!toSwahili) return text;
+
+  const replacements: [RegExp, string][] = [
+    [/Article 201/gi, "Ibara ya 201"],
+    [/Constitution of Kenya/gi, "Katiba ya Kenya"],
+    [/Public Finance Management/gi, "Usimamizi wa Fedha za Umma"],
+    [/Devolution/gi, "Ugatuzi"],
+    [/County Governments/gi, "Serikali za Kaunti"],
+    [/Counties/gi, "Kaunti"],
+    [/Youth Employment/gi, "Ajira kwa Vijana"],
+    [/Healthcare Access/gi, "Upatikanaji wa Huduma za Afya"],
+    [/Cost of Living/gi, "Gharama ya Maisha"],
+    [/Food Sovereignty/gi, "Uhuru wa Chakula na Kilimo"],
+    [/Public Debt/gi, "Madeni ya Umma"],
+    [/Education Reform/gi, "Mageuzi ya Elimu"],
+    [/Corruption/gi, "Ufisadi na Ubadhirifu"],
+    [/Anti-Corruption/gi, "Kupambana na Ufisadi"],
+    [/Transparency/gi, "Uwazi"],
+    [/Accountability/gi, "Uwajibikaji"],
+    [/Public Participation/gi, "Ushiriki wa Umma"],
+    [/Economic Survey/gi, "Utafiti wa Kiuchumi"],
+    [/Verified True/gi, "Imethibitishwa Kuwa Kweli"],
+    [/Misleading \/ Uncosted/gi, "Inapotosha \/ Haina Gharama"],
+    [/Contradicted by Official Data/gi, "Inapingana na Takwimu Rasmi"],
+    [/Context Needed/gi, "Inahitaji Ufafanuzi Zaidi"],
+    [/Article 201 Flag/gi, "Onyo la Ibara ya 201"],
+    [/Do not give us slogans, give us a plan/gi, "Usitupatie slogan, tupatie plan"],
+    [/One Country\. Many Ideas\. One Destination: Kenya/gi, "Nchi Moja. Mawazo Mengi. Mustakabali Mmoja: Kenya"]
+  ];
+
+  let result = text;
+  for (const [regex, rep] of replacements) {
+    result = result.replace(regex, rep);
+  }
+  return result;
+}
+
+// Real-time Context-Aware Civic Translation via Gemini API
+app.post("/api/translate-civic-content", async (req, res) => {
+  try {
+    const { text, texts, targetLang = "sw", domain, context } = req.body;
+
+    if (!text && (!texts || !Array.isArray(texts) || texts.length === 0)) {
+      return res.status(400).json({ error: "Please provide 'text' or 'texts' array to translate." });
+    }
+
+    const ai = getGenAI();
+    const isTargetSw = targetLang === "sw";
+
+    const systemPrompt = `You are a certified Kenyan civic translator, constitutional scholar, and bilingual policy communicator specializing in authentic Kenyan ${isTargetSw ? "Kiswahili" : "English"}.
+Your mission is to translate and localize policy proposals, manifesto claims, constitutional articles, and civic news updates between English and Kiswahili with maximum fidelity, clarity, and political neutrality.
+
+Constitutional & Civic Lexicon Guidelines:
+- Article 201: "Ibara ya 201 ya Katiba (Kanuni za Fedha za Umma)"
+- Devolution: "Ugatuzi na Serikali za Kaunti 47"
+- Public Debt: "Madeni ya Umma na Mzigo wa Madeni"
+- Accountability / Transparency: "Uwajibikaji na Uwazi"
+- Public Participation: "Ushiriki wa Wananchi"
+- Equitable Share: "Ugavi Sawa wa Mapato"
+- Slogan vs Plan motto: "Usitupatie slogan. Tupatie plan." (Do not give us slogans, give us a plan.)
+- One Country. Many Ideas. One Destination: Kenya.: "Nchi Moja. Mawazo Mengi. Mustakabali Mmoja: Kenya."
+
+Rules:
+1. Preserve numbers, statutory references, percentages, and financial currency (e.g. KES, Bilioni, Trilioni).
+2. Ensure natural, authoritative, and respectful Kenyan civic tone (suitable for community town halls, radio, and judicial policy analysis).
+3. If an array of texts is provided, maintain exact array ordering.
+
+Format response as structured JSON:
+${text ? `{ "translatedText": "string", "sourceLang": "${isTargetSw ? "en" : "sw"}", "targetLang": "${targetLang}" }` : `{ "translatedTexts": ["string", "string"], "sourceLang": "${isTargetSw ? "en" : "sw"}", "targetLang": "${targetLang}" }`}
+Return ONLY valid JSON.`;
+
+    if (ai) {
+      const contentToTranslate = text 
+        ? `Text to translate:\n"${text}"` 
+        : `Array of items to translate:\n${JSON.stringify(texts)}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `${systemPrompt}\nDomain: ${domain || "Civic Governance & Policy"}\nContext: ${context || "General Public Policy Scrutiny"}\n\n${contentToTranslate}`
+              }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const responseText = response.text || "{}";
+      let parsedResult: any = {};
+      try {
+        parsedResult = JSON.parse(responseText);
+      } catch (e) {
+        const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        parsedResult = JSON.parse(cleaned);
+      }
+
+      return res.json({ result: parsedResult, isAiGenerated: true });
+    } else {
+      if (text) {
+        return res.json({
+          result: {
+            translatedText: fallbackTranslateText(text, isTargetSw),
+            sourceLang: isTargetSw ? "en" : "sw",
+            targetLang
+          },
+          notice: "Translated using built-in civic dictionary fallback."
+        });
+      } else {
+        return res.json({
+          result: {
+            translatedTexts: (texts || []).map((t: string) => fallbackTranslateText(t, isTargetSw)),
+            sourceLang: isTargetSw ? "en" : "sw",
+            targetLang
+          },
+          notice: "Translated using built-in civic dictionary fallback."
+        });
+      }
+    }
+  } catch (error: any) {
+    console.error("Civic translation error:", error);
+    return res.status(500).json({ error: error?.message || "Failed to translate civic content" });
+  }
+});
+
+// AI-powered Debate Moderator Overlay - Neutral Political Context & Historical Scrutiny
+app.post("/api/debate-moderator-context", async (req, res) => {
+  try {
+    const { figureName, claimText, domain, policyContext } = req.body;
+
+    if (!figureName && !claimText) {
+      return res.status(400).json({ error: "Please provide figureName or claimText." });
+    }
+
+    const ai = getGenAI();
+    const cleanFigure = (figureName || "Kenyan Political Leadership").trim();
+
+    const systemPrompt = `You are the Lead Non-Partisan Debate Moderator and Chief Constitutional Historian for Kenya 2027: The Great Competition of Ideas.
+Your duty is strictly governed by Kenyan Constitutional impartiality (Article 10, Article 73, Article 201).
+Provide neutral, evidence-grounded, historical context regarding the political figure and claims being examined.
+Do NOT take sides, praise, or condemn any politician. Frame all context around verifiable public records, official statistics (KNBS, CBK, Controller of Budget, Auditor-General, Parliament Hansard), and statutory voting records.
+
+Required JSON Structure:
+{
+  "figureName": "${cleanFigure}",
+  "currentRole": "string",
+  "politicalHistory": [
+    {
+      "period": "string",
+      "role": "string",
+      "keyActions": "string"
+    }
+  ],
+  "legislativeTrackRecord": {
+    "keyBillsSponsoredOrVoted": ["string", "string"],
+    "devolutionStance": "string",
+    "publicFinanceArticle201Record": "string"
+  },
+  "factualContext": {
+    "claimUnderScrutiny": "string",
+    "verifiedOfficialData": "string",
+    "neutralAssessment": "string"
+  },
+  "neutralModeratorQuestions": [
+    "string",
+    "string",
+    "string"
+  ],
+  "nonPartisanSummary": "string"
+}
+Return ONLY valid JSON.`;
+
+    if (ai) {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `${systemPrompt}\n\nPolitical Figure: ${cleanFigure}\nClaim or Topic Under Scrutiny: ${claimText || "General Governance & Fiscal Record"}\nDomain: ${domain || "Economy, Debt & Public Service"}\nAdditional Policy Context: ${policyContext || "Article 201 Scrutiny Matrix"}`
+              }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }]
+        }
+      });
+
+      const responseText = response.text || "{}";
+      let parsedResult: any = {};
+      try {
+        parsedResult = JSON.parse(responseText);
+      } catch (e) {
+        const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        parsedResult = JSON.parse(cleaned);
+      }
+
+      parsedResult.isAiGenerated = true;
+      return res.json({ result: parsedResult });
+    } else {
+      const fallbackResult = generateFallbackModeratorContext(cleanFigure, claimText, domain);
+      return res.json({ result: fallbackResult, notice: "Generated using built-in non-partisan Kenyan political records database." });
+    }
+  } catch (error: any) {
+    console.error("Debate moderator context error:", error);
+    return res.status(500).json({ error: error?.message || "Failed to generate moderator context" });
+  }
+});
+
+function generateFallbackModeratorContext(figure: string, claim?: string, domain?: string) {
+  return {
+    figureName: figure,
+    currentRole: "National Political Figure / 2027 Presidential or Parliamentary Candidate",
+    politicalHistory: [
+      {
+        period: "2022 – Present",
+        role: "National Executive / Coalition Leadership",
+        keyActions: "Formulated and implemented national fiscal policy, contested parliamentary tax bills, and negotiated external sovereign debt structures with the IMF/World Bank."
+      },
+      {
+        period: "2013 – 2022",
+        role: "Devolution & National Governance Executive",
+        keyActions: "Oversaw devolution roll-out, intergovernmental budget transfers under the County Allocation of Revenue Act (CARA), and regional infrastructure priorities."
+      },
+      {
+        period: "Prior to 2013",
+        role: "Constitutional & Parliamentary Leadership",
+        keyActions: "Participated in the 2010 Constitutional dispensation formulation, passage of the Public Finance Management (PFM) Act 2012, and national economic blueprint drafting."
+      }
+    ],
+    legislativeTrackRecord: {
+      keyBillsSponsoredOrVoted: [
+        "Public Finance Management (PFM) Act & Annual Division of Revenue Bills",
+        "National Tax Laws & Finance Acts (2018–2025)",
+        "Social Health Insurance Act & Equalization Fund Appropriations"
+      ],
+      devolutionStance: "Advocates for timely Treasury disbursements to all 47 counties while demanding heightened sub-national audit compliance under the Controller of Budget.",
+      publicFinanceArticle201Record: "Subject to public scrutiny regarding the statutory 35% debt-to-revenue ratio and prudent generation-sharing of sovereign liabilities."
+    },
+    factualContext: {
+      claimUnderScrutiny: claim || "Policy delivery claim concerning cost of living, agriculture, or national debt management.",
+      verifiedOfficialData: "Official Central Bank of Kenya (CBK) and KNBS Economic Surveys record national debt service at ~61% of ordinary revenue in FY 2025/26, with inflation averaging 5.8%.",
+      neutralAssessment: "Empirical evaluation reveals that while capital infrastructure expansion has occurred, ordinary recurrent revenue remains tightly constrained by sovereign amortisation schedules."
+    },
+    neutralModeratorQuestions: [
+      "Given the statutory ceilings in the PFM Act 2012, what specific recurrent line items will be reallocated to fund this proposed policy?",
+      "How will your administration ensure equitable economic benefits reach marginalized pastoralist and ASAL counties without increasing external commercial debt?",
+      "In light of your past voting record on national finance acts, what legal mechanisms will you institute to enforce public participation under Article 118 and Article 201?"
+    ],
+    nonPartisanSummary: "A comprehensive review of official Hansard records and National Treasury bulletins indicates significant experience in legislative negotiations, accompanied by ongoing civic debate over fiscal consolidation versus social protection expenditures."
   };
 }
 

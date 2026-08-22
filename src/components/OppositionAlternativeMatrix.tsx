@@ -127,12 +127,14 @@ export const OppositionAlternativeMatrix: React.FC = () => {
   ) || PARTY_MANIFESTO_COMPARISONS[0];
 
 
+  const safeSearch = (searchQuery || "").toLowerCase();
+
   const filteredCardsData = OPPOSITION_ACCOUNTABILITY_DATA.filter((item) => {
     const matchesRigor = filterRigor === "All" || item.rigorLevel.includes(filterRigor);
     const matchesSearch = 
-      item.domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.criticismRaised.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.proposedAlternative.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.domain || "").toLowerCase().includes(safeSearch) ||
+      (item.criticismRaised || "").toLowerCase().includes(safeSearch) ||
+      (item.proposedAlternative || "").toLowerCase().includes(safeSearch);
     return matchesRigor && matchesSearch;
   });
 

@@ -9,6 +9,9 @@ export interface PolicyPdfExportData {
   distillationResult?: ManifestoDistillationResult | null;
   weightedScore?: number;
   weightedSettings?: WeightedCriteriaSettings;
+  reportTitle?: string;
+  authorName?: string;
+  analysisDate?: string;
 }
 
 export function exportPolicyAuditToPdf(data: PolicyPdfExportData) {
@@ -42,49 +45,66 @@ export function exportPolicyAuditToPdf(data: PolicyPdfExportData) {
 
   // 1. BRAND HEADER
   doc.setFillColor(15, 23, 42); // Slate-900
-  doc.rect(margin, y, contentWidth, 24, "F");
+  doc.rect(margin, y, contentWidth, 26, "F");
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setTextColor(255, 255, 255);
-  doc.text("KENYA 2027: THE GREAT COMPETITION OF IDEAS", margin + 6, y + 9);
+  const displayTitle = data.reportTitle || "KENYA 2027: THE GREAT COMPETITION OF IDEAS";
+  const truncatedTitle = displayTitle.length > 55 ? displayTitle.slice(0, 52) + "..." : displayTitle;
+  doc.text(truncatedTitle, margin + 6, y + 8);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(167, 243, 208); // Emerald-200
-  doc.text("Official Non-Partisan Policy Audit & Article 201 Fiscal Scrutiny Report", margin + 6, y + 15);
-  doc.text("Usitupatie slogan. Tupatie plan.", margin + 6, y + 20);
+  doc.text("Official Non-Partisan Policy Audit & Article 201 Fiscal Scrutiny Report", margin + 6, y + 14);
+  doc.text("Usitupatie slogan. Tupatie plan.", margin + 6, y + 19);
 
   // Date on right
-  const dateStr = new Date().toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  });
+  const formattedDate = data.analysisDate 
+    ? data.analysisDate 
+    : new Date().toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
   doc.setFontSize(8);
   doc.setTextColor(220, 220, 220);
-  doc.text(`Audit Date: ${dateStr}`, pageWidth - margin - 6, y + 10, { align: "right" });
+  doc.text(`Audit Date: ${formattedDate}`, pageWidth - margin - 6, y + 9, { align: "right" });
 
-  y += 30;
+  if (data.authorName) {
+    doc.setFontSize(7.5);
+    doc.setTextColor(190, 200, 215);
+    doc.text(`Analyst: ${data.authorName}`, pageWidth - margin - 6, y + 15, { align: "right" });
+  }
+
+  y += 32;
 
   // 2. AUDIT TARGET DETAILS
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, y, contentWidth, 20, 2, 2, "FD");
+  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, "FD");
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setTextColor(15, 23, 42);
   doc.text(`Domain: ${data.domain}`, margin + 5, y + 6);
   doc.text(`Candidate / Bloc: ${data.actorType}`, margin + 5, y + 12);
+  if (data.authorName) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Prepared By: ${data.authorName} (${formattedDate})`, margin + 5, y + 17);
+  }
 
   if (data.weightedScore) {
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(5, 150, 105);
     doc.text(`Weighted Rigor: ${data.weightedScore}/100`, pageWidth - margin - 5, y + 10, { align: "right" });
   }
 
-  y += 26;
+  y += 28;
 
   // 3. EXECUTIVE SUMMARY
   checkPageBreak(30);
